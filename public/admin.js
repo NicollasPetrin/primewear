@@ -87,6 +87,7 @@ function bindEvents() {
   document.querySelector("#resetProductButton").addEventListener("click", resetProductForm);
   fields.adminSearch.addEventListener("input", renderAdminProducts);
   fields.productImage.addEventListener("change", previewSelectedImage);
+  fields.productReplaceImages.addEventListener("change", renderImagePreview);
   fields.imagePreview.addEventListener("click", handleImagePreviewClick);
   fields.imageEditorClose.addEventListener("click", closeImageEditor);
   fields.imageEditorReset.addEventListener("click", resetImageEditor);
@@ -296,7 +297,7 @@ function editProduct(productId) {
   fields.productMessage.textContent = "";
   clearSelectedImages();
   state.existingImages = productImages(product);
-  setImagePreview(state.existingImages, { editable: true });
+  renderImagePreview();
   document.querySelector("#productsTab").scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
@@ -326,55 +327,116 @@ function resetProductForm() {
   fields.replaceImagesToggle.hidden = true;
   fields.productFormTitle.textContent = "Nova peça";
   fields.productMessage.textContent = "";
-  setImagePreview("");
+  renderImagePreview();
 }
 
 function previewSelectedImage() {
   const files = [...fields.productImage.files];
-  clearSelectedImages();
 
   if (!files.length) {
-    setImagePreview("");
+    renderImagePreview();
     return;
   }
 
-  state.selectedImages = files.slice(0, 12).map((file, index) => ({
-    id: `${Date.now()}-${index}-${Math.random().toString(16).slice(2)}`,
-    file,
-    previewUrl: URL.createObjectURL(file),
-    editedBlob: null
-  }));
-  state.existingImages = [];
-  renderSelectedImagePreview();
+  const availableSlots = remainingImageSlots();
+
+  if (availableSlots <= 0) {
+    fields.productMessage.textContent = "Limite de 12 fotos por produto.";
+    fields.productImage.value = "";
+    renderImagePreview();
+    return;
+  }
+
+  const existingKeys = new Set(state.selectedImages.map((item) => fileKey(item.file)));
+  const imagesToAdd = files
+    .filter((file) => !existingKeys.has(fileKey(file)))
+    .slice(0, availableSlots)
+    .map((file, index) => ({
+      id: `${Date.now()}-${index}-${Math.random().toString(16).slice(2)}`,
+      file,
+      previewUrl: URL.createObjectURL(file),
+      editedBlob: null,
+      fromExisting: false
+    }));
+
+  state.selectedImages.push(...imagesToAdd);
+  fields.productImage.value = "";
+  fields.productMessage.textContent =
+    files.length > imagesToAdd.length
+      ? "Algumas fotos nao entraram porque o limite e 12 por produto."
+      : "";
+  renderImagePreview();
 }
 
-function setImagePreview(source, options = {}) {
+function renderImagePreview() {
   fields.imagePreview.innerHTML = "";
   fields.imagePreview.style.backgroundImage = "";
-  const sources = Array.isArray(source) ? source.filter(Boolean) : [source].filter(Boolean);
+  const showExistingImages =
+    state.existingImages.length > 0 &&
+    !fields.productReplaceImages.checked &&
+    !state.selectedImages.some((item) => item.fromExisting);
+  const cards = [
+    ...(showExistingImages
+      ? state.existingImages.map((source, index) => ({
+          type: "existing",
+          index,
+          source,
+          label: "Atual",
+          editable: true,
+          removable: false
+        }))
+      : []),
+    ...state.selectedImages.map((item, index) => ({
+      type: "selected",
+      index,
+      source: item.previewUrl,
+      label: item.fromExisting ? "Atual editada" : "Nova",
+      editable: true,
+      removable: !item.fromExisting
+    }))
+  ];
 
-  if (!sources.length) {
+  if (!cards.length) {
     fields.imagePreview.textContent = "Sem foto";
     return;
   }
 
-  sources.forEach((item, index) => {
-    const sourceUrl = typeof item === "string" ? item : item.previewUrl;
+  cards.forEach((item, visualIndex) => {
     const card = document.createElement("div");
     card.className = "image-preview-card";
 
     const image = document.createElement("img");
-    image.src = sourceUrl;
-    image.alt = `Prévia da foto ${index + 1}`;
+    image.src = item.source;
+    image.alt = `Prévia da foto ${visualIndex + 1}`;
     card.append(image);
 
-    if (options.editable) {
-      const button = document.createElement("button");
-      button.className = "button button-quiet image-edit-button";
-      button.type = "button";
-      button.dataset.editImage = String(index);
-      button.textContent = "Editar";
-      card.append(button);
+    const badge = document.createElement("span");
+    badge.className = "image-preview-badge";
+    badge.textContent = item.label;
+    card.append(badge);
+
+    if (item.editable) {
+      const editButton = document.createElement("button");
+      editButton.className = "button button-quiet image-edit-button";
+      editButton.type = "button";
+      editButton.textContent = "Editar";
+
+      if (item.type === "existing") {
+        editButton.dataset.editExistingImage = String(item.index);
+      } else {
+        editButton.dataset.editSelectedImage = String(item.index);
+      }
+
+      card.append(editButton);
+    }
+
+    if (item.removable) {
+      const removeButton = document.createElement("button");
+      removeButton.className = "button button-quiet image-remove-button";
+      removeButton.type = "button";
+      removeButton.dataset.removeSelectedImage = String(item.index);
+      removeButton.textContent = "Remover";
+      card.append(removeButton);
     }
 
     fields.imagePreview.append(card);
@@ -382,7 +444,7 @@ function setImagePreview(source, options = {}) {
 }
 
 function renderSelectedImagePreview() {
-  setImagePreview(state.selectedImages, { editable: true });
+  renderImagePreview();
 }
 
 function clearSelectedImages() {
@@ -394,16 +456,52 @@ function clearSelectedImages() {
   state.selectedImages = [];
 }
 
-async function handleImagePreviewClick(event) {
-  const button = event.target.closest("[data-edit-image]");
+function removeSelectedImage(index) {
+  const [item] = state.selectedImages.splice(index, 1);
 
-  if (!button) {
+  if (item?.previewUrl?.startsWith("blob:")) {
+    URL.revokeObjectURL(item.previewUrl);
+  }
+
+  fields.productMessage.textContent = "";
+  renderImagePreview();
+}
+
+function remainingImageSlots() {
+  const replacingExisting =
+    fields.productReplaceImages.checked || state.selectedImages.some((item) => item.fromExisting);
+  const currentCount = (replacingExisting ? 0 : state.existingImages.length) + state.selectedImages.length;
+  return Math.max(12 - currentCount, 0);
+}
+
+function fileKey(file) {
+  return [file.name, file.size, file.lastModified].join(":");
+}
+
+async function handleImagePreviewClick(event) {
+  const removeButton = event.target.closest("[data-remove-selected-image]");
+
+  if (removeButton) {
+    removeSelectedImage(Number(removeButton.dataset.removeSelectedImage));
     return;
   }
 
-  const index = Number(button.dataset.editImage);
+  const selectedButton = event.target.closest("[data-edit-selected-image]");
 
-  if (!state.selectedImages[index] && state.existingImages[index]) {
+  if (selectedButton) {
+    openImageEditor(Number(selectedButton.dataset.editSelectedImage));
+    return;
+  }
+
+  const existingButton = event.target.closest("[data-edit-existing-image]");
+
+  if (!existingButton) {
+    return;
+  }
+
+  const index = Number(existingButton.dataset.editExistingImage);
+
+  if (state.existingImages[index]) {
     try {
       fields.productMessage.textContent = "Preparando foto...";
       await prepareExistingImagesForEditing();
@@ -418,10 +516,11 @@ async function handleImagePreviewClick(event) {
 }
 
 async function prepareExistingImagesForEditing() {
-  if (state.selectedImages.length || !state.existingImages.length) {
+  if (!state.existingImages.length) {
     return;
   }
 
+  const queuedImages = state.selectedImages;
   const images = await Promise.all(
     state.existingImages.map(async (source, index) => {
       const response = await fetch(source);
@@ -446,12 +545,11 @@ async function prepareExistingImagesForEditing() {
     })
   );
 
-  clearSelectedImages();
-  state.selectedImages = images;
+  state.selectedImages = [...images, ...queuedImages];
   state.existingImages = [];
   fields.productReplaceImages.checked = true;
   fields.replaceImagesToggle.hidden = false;
-  renderSelectedImagePreview();
+  renderImagePreview();
 }
 
 function openImageEditor(index) {

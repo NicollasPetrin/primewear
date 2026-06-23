@@ -816,6 +816,19 @@ textarea:focus {
   height: 100%;
 }
 
+.image-preview-badge {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  min-height: 24px;
+  padding: 4px 7px;
+  border-radius: 6px;
+  background: rgba(7, 21, 37, 0.78);
+  color: white;
+  font-size: 11px;
+  font-weight: 900;
+}
+
 .image-edit-button {
   position: absolute;
   right: 6px;
@@ -825,6 +838,19 @@ textarea:focus {
   border-color: rgba(255, 255, 255, 0.7);
   background: rgba(255, 255, 255, 0.92);
   font-size: 12px;
+  box-shadow: 0 8px 18px rgba(7, 21, 37, 0.16);
+}
+
+.image-remove-button {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  min-height: 26px;
+  padding: 0 8px;
+  border-color: rgba(255, 211, 216, 0.92);
+  background: rgba(255, 245, 246, 0.94);
+  color: var(--danger);
+  font-size: 11px;
   box-shadow: 0 8px 18px rgba(7, 21, 37, 0.16);
 }
 
@@ -1150,7 +1176,8 @@ textarea:focus {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .image-edit-button {
+  .image-edit-button,
+  .image-remove-button {
     width: auto;
   }
 
