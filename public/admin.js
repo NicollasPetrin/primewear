@@ -181,6 +181,7 @@ async function handleProductSubmit(event) {
   formData.set("deliveryType", fields.productDeliveryType.value);
   formData.set("replaceImages", String(shouldReplaceImages));
   formData.set("imageColors", JSON.stringify(imageColorsForSubmit(shouldReplaceImages)));
+  formData.set("imageOrder", JSON.stringify(imageOrderForSubmit(shouldReplaceImages)));
   formData.delete("images");
 
   state.selectedImages.forEach((item, index) => {
@@ -394,6 +395,8 @@ function renderImagePreview() {
           source,
           label: "Atual",
           color: state.imageColors[source] || "",
+          canMovePrev: index > 0,
+          canMoveNext: index < state.existingImages.length - 1,
           editable: true,
           removable: false
         }))
@@ -404,6 +407,8 @@ function renderImagePreview() {
       source: item.previewUrl,
       label: item.fromExisting ? "Atual editada" : "Nova",
       color: item.color || "",
+      canMovePrev: index > 0,
+      canMoveNext: index < state.selectedImages.length - 1,
       editable: true,
       removable: !item.fromExisting
     }))
@@ -427,6 +432,36 @@ function renderImagePreview() {
     badge.className = "image-preview-badge";
     badge.textContent = item.label;
     card.append(badge);
+
+    const orderControls = document.createElement("div");
+    orderControls.className = "image-order-controls";
+
+    const previousButton = document.createElement("button");
+    previousButton.className = "image-order-button";
+    previousButton.type = "button";
+    previousButton.textContent = "‹";
+    previousButton.disabled = !item.canMovePrev;
+    previousButton.setAttribute("aria-label", `Mover foto ${visualIndex + 1} para antes`);
+
+    const nextButton = document.createElement("button");
+    nextButton.className = "image-order-button";
+    nextButton.type = "button";
+    nextButton.textContent = "›";
+    nextButton.disabled = !item.canMoveNext;
+    nextButton.setAttribute("aria-label", `Mover foto ${visualIndex + 1} para depois`);
+
+    if (item.type === "existing") {
+      previousButton.dataset.moveExistingImage = String(item.index);
+      nextButton.dataset.moveExistingImage = String(item.index);
+    } else {
+      previousButton.dataset.moveSelectedImage = String(item.index);
+      nextButton.dataset.moveSelectedImage = String(item.index);
+    }
+
+    previousButton.dataset.direction = "prev";
+    nextButton.dataset.direction = "next";
+    orderControls.append(previousButton, nextButton);
+    card.append(orderControls);
 
     const colorInput = document.createElement("input");
     colorInput.className = "image-color-input";
@@ -519,6 +554,10 @@ function imageColorsForSubmit(shouldReplaceImages) {
   return colors;
 }
 
+function imageOrderForSubmit(shouldReplaceImages) {
+  return shouldReplaceImages ? [] : state.existingImages;
+}
+
 function syncProductColorsFromImages() {
   const colors = uniqueTexts([
     ...parseCommaList(fields.productColors.value),
@@ -597,6 +636,36 @@ function removeSelectedImage(index) {
   renderImagePreview();
 }
 
+function moveExistingImage(index, direction) {
+  const targetIndex = direction === "prev" ? index - 1 : index + 1;
+
+  if (!state.existingImages[index] || !state.existingImages[targetIndex]) {
+    return;
+  }
+
+  [state.existingImages[index], state.existingImages[targetIndex]] = [
+    state.existingImages[targetIndex],
+    state.existingImages[index]
+  ];
+  fields.productMessage.textContent = "Ordem das fotos alterada. Salve a peça para publicar.";
+  renderImagePreview();
+}
+
+function moveSelectedImage(index, direction) {
+  const targetIndex = direction === "prev" ? index - 1 : index + 1;
+
+  if (!state.selectedImages[index] || !state.selectedImages[targetIndex]) {
+    return;
+  }
+
+  [state.selectedImages[index], state.selectedImages[targetIndex]] = [
+    state.selectedImages[targetIndex],
+    state.selectedImages[index]
+  ];
+  fields.productMessage.textContent = "Ordem das fotos alterada. Salve a peça para publicar.";
+  renderImagePreview();
+}
+
 function remainingImageSlots() {
   const replacingExisting =
     fields.productReplaceImages.checked || state.selectedImages.some((item) => item.fromExisting);
@@ -609,6 +678,20 @@ function fileKey(file) {
 }
 
 async function handleImagePreviewClick(event) {
+  const moveExistingButton = event.target.closest("[data-move-existing-image]");
+
+  if (moveExistingButton) {
+    moveExistingImage(Number(moveExistingButton.dataset.moveExistingImage), moveExistingButton.dataset.direction);
+    return;
+  }
+
+  const moveSelectedButton = event.target.closest("[data-move-selected-image]");
+
+  if (moveSelectedButton) {
+    moveSelectedImage(Number(moveSelectedButton.dataset.moveSelectedImage), moveSelectedButton.dataset.direction);
+    return;
+  }
+
   const removeButton = event.target.closest("[data-remove-selected-image]");
 
   if (removeButton) {

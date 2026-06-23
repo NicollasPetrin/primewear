@@ -176,6 +176,12 @@ function cleanImageColorMap(value) {
   );
 }
 
+function orderImages(images, requestedOrder) {
+  const available = new Set(images);
+  const ordered = requestedOrder.filter((image) => available.has(image));
+  return [...new Set([...ordered, ...images])];
+}
+
 function uniqueTexts(values) {
   const seen = new Set();
 
@@ -282,7 +288,8 @@ function normalizeProduct(input, existing = {}, files = []) {
   const deliveryType = normalizeDeliveryType(input.deliveryType ?? existing.deliveryType);
   const uploadedImages = files.map((file) => `/uploads/${file.filename}`);
   const replaceImages = parseBoolean(input.replaceImages, false);
-  const existingImages = replaceImages ? [] : productImages(existing);
+  const imageOrder = parseJsonList(input.imageOrder);
+  const existingImages = replaceImages ? [] : orderImages(productImages(existing), imageOrder);
   const images = [...new Set([...existingImages, ...uploadedImages])].slice(0, 12);
   const fallbackImage = cleanText(input.image ?? existing.image, 180);
   const image = images[0] || fallbackImage;
