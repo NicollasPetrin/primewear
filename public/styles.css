@@ -268,7 +268,7 @@ textarea {
 
 .catalog-tools {
   display: grid;
-  grid-template-columns: 1.4fr repeat(4, 1fr);
+  grid-template-columns: minmax(180px, 1.4fr) repeat(5, minmax(130px, 1fr));
   gap: 12px;
   margin: 28px 0;
   padding: 14px;

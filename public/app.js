@@ -12,6 +12,7 @@ const state = {
   filters: {
     search: "",
     category: "",
+    brand: "",
     size: "",
     color: "",
     sort: "featured"
@@ -24,6 +25,7 @@ const elements = {
   count: document.querySelector("#catalogCount"),
   search: document.querySelector("#searchInput"),
   category: document.querySelector("#categoryFilter"),
+  brand: document.querySelector("#brandFilter"),
   size: document.querySelector("#sizeFilter"),
   color: document.querySelector("#colorFilter"),
   sort: document.querySelector("#sortFilter"),
@@ -103,12 +105,20 @@ function applySettings(settings) {
 }
 
 function bindEvents() {
-  const filterInputs = [elements.search, elements.category, elements.size, elements.color, elements.sort];
+  const filterInputs = [
+    elements.search,
+    elements.category,
+    elements.brand,
+    elements.size,
+    elements.color,
+    elements.sort
+  ];
 
   filterInputs.forEach((input) => {
     input.addEventListener("input", () => {
       state.filters.search = elements.search.value.trim().toLowerCase();
       state.filters.category = elements.category.value;
+      state.filters.brand = elements.brand.value;
       state.filters.size = elements.size.value;
       state.filters.color = elements.color.value;
       state.filters.sort = elements.sort.value;
@@ -180,6 +190,7 @@ function bindEvents() {
 
 function buildFilters(products) {
   fillSelect(elements.category, unique(products.map((product) => product.category)), "Todas");
+  fillSelect(elements.brand, unique(products.map((product) => product.brand)), "Todas");
   fillSelect(elements.size, unique(products.flatMap((product) => product.sizes || [])), "Todos");
   fillSelect(elements.color, unique(products.flatMap((product) => product.colors || [])), "Todas");
 }
@@ -211,13 +222,14 @@ function renderProducts() {
 }
 
 function filteredProducts() {
-  const { search, category, size, color, sort } = state.filters;
+  const { search, category, brand, size, color, sort } = state.filters;
 
   return state.products
     .filter((product) => {
       const haystack = [
         product.name,
         product.category,
+        product.brand,
         product.description,
         ...(product.sizes || []),
         ...(product.colors || [])
@@ -228,6 +240,7 @@ function filteredProducts() {
       return (
         (!search || haystack.includes(search)) &&
         (!category || product.category === category) &&
+        (!brand || product.brand === brand) &&
         (!size || (product.sizes || []).includes(size)) &&
         (!color || (product.colors || []).includes(color))
       );
@@ -255,10 +268,10 @@ function createProductCard(product) {
       ${renderCarouselControls(product.id, images, imageIndex)}
     </div>
     <div class="product-content">
-      <p class="product-category">${escapeHtml(product.category || "Geral")}</p>
+      <p class="product-category">${escapeHtml(productSubtitle(product))}</p>
       <h3>${escapeHtml(product.name)}</h3>
       <p class="product-price">${money.format(product.price || 0)}</p>
-      <div class="chip-row">${renderChips([...(product.sizes || []), ...(product.colors || [])])}</div>
+      <div class="chip-row">${renderChips([product.category, ...(product.sizes || []), ...(product.colors || [])])}</div>
       <div class="product-actions">
         <a class="button button-primary" href="${buildWhatsappUrl(productMessage(product))}">Pedir</a>
         <button class="button button-quiet" type="button" data-open-product="${escapeAttr(product.id)}">Detalhes</button>
@@ -300,7 +313,15 @@ function moveCardCarousel(productId, action) {
 }
 
 function renderChips(items) {
-  return items.slice(0, 6).map((item) => `<span>${escapeHtml(item)}</span>`).join("");
+  return items
+    .filter(Boolean)
+    .slice(0, 6)
+    .map((item) => `<span>${escapeHtml(item)}</span>`)
+    .join("");
+}
+
+function productSubtitle(product) {
+  return [product.brand, product.category || "Geral"].filter(Boolean).join(" • ");
 }
 
 function openProductFromPath(push = false) {
@@ -345,10 +366,18 @@ function renderProductDialog(product) {
       ${renderDialogCarouselControls(images, imageIndex)}
     </div>
     <div class="dialog-info">
-      <p class="product-category">${escapeHtml(product.category || "Geral")}</p>
+      <p class="product-category">${escapeHtml(productSubtitle(product))}</p>
       <h2>${escapeHtml(product.name)}</h2>
       <p class="product-price">${money.format(product.price || 0)}</p>
       ${product.description ? `<p>${escapeHtml(product.description)}</p>` : ""}
+      ${
+        product.brand
+          ? `<div class="info-group">
+        <strong>Marca</strong>
+        <div class="chip-row"><span>${escapeHtml(product.brand)}</span></div>
+      </div>`
+          : ""
+      }
       <div class="info-group">
         <strong>Tamanhos</strong>
         <div class="chip-row">${renderChips(product.sizes || []) || "<span>Consultar</span>"}</div>

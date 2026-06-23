@@ -29,6 +29,7 @@ const fields = {
   productName: document.querySelector("#productName"),
   productPrice: document.querySelector("#productPrice"),
   productCategory: document.querySelector("#productCategory"),
+  productBrand: document.querySelector("#productBrand"),
   productSizes: document.querySelector("#productSizes"),
   productColors: document.querySelector("#productColors"),
   productDescription: document.querySelector("#productDescription"),
@@ -228,7 +229,7 @@ async function handleSettingsSubmit(event) {
 function renderAdminProducts() {
   const query = fields.adminSearch.value.trim().toLowerCase();
   const products = state.products.filter((product) => {
-    return [product.name, product.category, product.description]
+    return [product.name, product.category, product.brand, product.description]
       .join(" ")
       .toLowerCase()
       .includes(query);
@@ -246,11 +247,13 @@ function renderAdminProducts() {
       </div>
       <div class="admin-product-info">
         <div>
-          <p class="product-category">${escapeHtml(product.category || "Geral")}</p>
+          <p class="product-category">${escapeHtml(product.brand || product.category || "Geral")}</p>
           <h3>${escapeHtml(product.name)}</h3>
         </div>
         <p>${money.format(product.price || 0)}</p>
         <div class="chip-row">
+          <span>${escapeHtml(product.category || "Geral")}</span>
+          ${product.brand ? `<span>${escapeHtml(product.brand)}</span>` : ""}
           <span>${product.active ? "No site" : "Oculta"}</span>
           <span>${product.inStock ? "Disponível" : "Indisponível"}</span>
           <span>${productImages(product).length} ${productImages(product).length === 1 ? "foto" : "fotos"}</span>
@@ -279,6 +282,7 @@ function editProduct(productId) {
   fields.productName.value = product.name;
   fields.productPrice.value = String(product.price || "").replace(".", ",");
   fields.productCategory.value = product.category || "";
+  fields.productBrand.value = product.brand || "";
   fields.productSizes.value = (product.sizes || []).join(", ");
   fields.productColors.value = (product.colors || []).join(", ");
   fields.productDescription.value = product.description || "";
@@ -317,6 +321,7 @@ function resetProductForm() {
   fields.productActive.checked = true;
   fields.productInStock.checked = true;
   fields.productFeatured.checked = false;
+  fields.productBrand.value = "";
   fields.productReplaceImages.checked = false;
   fields.replaceImagesToggle.hidden = true;
   fields.productFormTitle.textContent = "Nova peça";

@@ -214,6 +214,7 @@ function normalizeProduct(input, existing = {}, files = []) {
   }
 
   const category = cleanText(input.category ?? existing.category, 50) || "Geral";
+  const brand = cleanText(input.brand ?? existing.brand, 50);
   const uploadedImages = files.map((file) => `/uploads/${file.filename}`);
   const replaceImages = parseBoolean(input.replaceImages, false);
   const existingImages = replaceImages ? [] : productImages(existing);
@@ -226,6 +227,7 @@ function normalizeProduct(input, existing = {}, files = []) {
     name,
     price: parsePrice(input.price, existing.price || 0),
     category,
+    brand,
     sizes: parseList(input.sizes ?? existing.sizes),
     colors: parseList(input.colors ?? existing.colors),
     description: cleanText(input.description ?? existing.description, 500),
@@ -253,6 +255,7 @@ function cleanSettings(input) {
 
 function productMetaDescription(product) {
   const parts = [
+    product.brand,
     product.category,
     money.format(product.price || 0),
     product.sizes?.length ? `Tamanhos: ${product.sizes.join(", ")}` : "",
