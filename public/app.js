@@ -26,6 +26,8 @@ const elements = {
   empty: document.querySelector("#emptyState"),
   count: document.querySelector("#catalogCount"),
   filtersForm: document.querySelector("#catalogFilters"),
+  brandWall: document.querySelector("#marcas"),
+  brandWallGrid: document.querySelector("#brandWallGrid"),
   menuToggle: document.querySelector("#menuToggle"),
   siteNav: document.querySelector("#siteNav"),
   navClothing: document.querySelector("#navClothingMenu"),
@@ -143,6 +145,16 @@ function bindEvents() {
   elements.clearFilters.addEventListener("click", () => {
     resetFilters();
     renderProducts();
+  });
+
+  elements.brandWallGrid.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-brand-wall]");
+
+    if (!button) {
+      return;
+    }
+
+    applyNavFilter(button);
   });
 
   elements.genderGroup.addEventListener("click", (event) => {
@@ -412,6 +424,7 @@ function buildFilters(products) {
   fillSelect(elements.size, catalogSizes(products), "Todos");
   fillSelect(elements.color, unique(products.flatMap((product) => product.colors || [])), "Todas");
   renderNavMenus(products);
+  renderBrandWall(products);
 }
 
 function renderNavMenus(products) {
@@ -450,6 +463,62 @@ function renderNavMenus(products) {
   elements.navBrands.innerHTML = brands.length
     ? brands.map((brand) => navMenuButton(brand, { brand })).join("")
     : `<p class="nav-menu-empty">Nenhuma marca cadastrada.</p>`;
+}
+
+function renderBrandWall(products) {
+  const brands = brandSummaries(products);
+
+  elements.brandWall.hidden = brands.length === 0;
+  elements.brandWallGrid.innerHTML = brands.map(renderBrandTile).join("");
+  updateBrandWallState();
+}
+
+function brandSummaries(products) {
+  const byBrand = new Map();
+
+  products.forEach((product) => {
+    const brand = product.brand;
+
+    if (!brand) {
+      return;
+    }
+
+    const summary = byBrand.get(brand) || {
+      brand,
+      count: 0,
+      image: ""
+    };
+
+    summary.count += 1;
+    summary.image ||= productImages(product)[0] || "";
+    byBrand.set(brand, summary);
+  });
+
+  return [...byBrand.values()].sort((a, b) => a.brand.localeCompare(b.brand, "pt-BR"));
+}
+
+function renderBrandTile({ brand, count, image }) {
+  const imageStyle = image ? ` style="--brand-image: url(&quot;${escapeAttr(image)}&quot;)"` : "";
+
+  return `
+    <button
+      class="brand-tile"
+      type="button"
+      data-brand-wall
+      data-nav-brand="${escapeAttr(brand)}"
+      aria-label="Ver produtos da marca ${escapeAttr(brand)}"
+      ${imageStyle}
+    >
+      <span class="brand-tile-logo">${escapeHtml(brand)}</span>
+      <small>${count} ${count === 1 ? "peça" : "peças"}</small>
+    </button>
+  `;
+}
+
+function updateBrandWallState() {
+  elements.brandWallGrid.querySelectorAll("[data-brand-wall]").forEach((button) => {
+    button.classList.toggle("is-active", button.dataset.navBrand === state.filters.brand);
+  });
 }
 
 function renderNavMenuItems({ allLabel, emptyLabel, group, values, type }) {
@@ -625,6 +694,7 @@ function renderProducts() {
   updateActiveFilterCount();
   syncGenderButtons();
   updateNavState();
+  updateBrandWallState();
 
   products.forEach((product) => {
     elements.grid.append(createProductCard(product));
