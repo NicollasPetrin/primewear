@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Painel administrativo | Catálogo</title>
+    <meta name="robots" content="noindex" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body class="admin-page">
+    <section class="login-screen" id="loginView">
+      <form class="login-panel" id="loginForm">
+        <p class="eyebrow">Admin</p>
+        <img class="login-logo" src="/assets/primewear-logo-cropped.png" alt="Primewear Imports" />
+        <h1>Painel do catálogo</h1>
+        <p>Entre para cadastrar roupas, trocar fotos e ajustar os dados da loja.</p>
+        <label>
+          <span>Senha</span>
+          <input
+            id="loginPassword"
+            name="password"
+            type="password"
+            autocomplete="current-password"
+            required
+          />
+        </label>
+        <button class="button button-primary" type="submit">Entrar</button>
+        <p class="form-message" id="loginMessage" role="status"></p>
+      </form>
+    </section>
+
+    <div class="admin-shell" id="adminApp" hidden>
+      <header class="admin-header">
+        <div class="admin-brand">
+          <img src="/assets/primewear-logo-cropped.png" alt="Primewear Imports" />
+          <div>
+          <p class="eyebrow">Catálogo online</p>
+          <h1 id="adminStoreName">Primewear Imports</h1>
+          </div>
+        </div>
+        <div class="admin-header-actions">
+          <a class="button button-quiet" href="/" target="_blank" rel="noreferrer">Ver site</a>
+          <button class="button button-ghost" id="logoutButton" type="button">Sair</button>
+        </div>
+      </header>
+
+      <div class="security-warning" id="passwordWarning" hidden>
+        A senha inicial está ativa. Troque `ADMIN_PASSWORD` antes de publicar o catálogo.
+      </div>
+
+      <nav class="admin-tabs" aria-label="Áreas do painel">
+        <button class="tab-button active" data-tab="products" type="button">Produtos</button>
+        <button class="tab-button" data-tab="settings" type="button">Loja</button>
+      </nav>
+
+      <main>
+        <section class="admin-tab active" id="productsTab">
+          <div class="admin-layout">
+            <form class="admin-panel product-form" id="productForm">
+              <div class="panel-heading">
+                <div>
+                  <p class="eyebrow">Produto</p>
+                  <h2 id="productFormTitle">Nova peça</h2>
+                </div>
+                <button class="button button-quiet" id="resetProductButton" type="button">
+                  Limpar
+                </button>
+              </div>
+
+              <input id="productId" type="hidden" />
+
+              <label>
+                <span>Nome da peça</span>
+                <input id="productName" name="name" type="text" maxlength="90" required />
+              </label>
+
+              <div class="form-row">
+                <label>
+                  <span>Preço</span>
+                  <input
+                    id="productPrice"
+                    name="price"
+                    type="text"
+                    inputmode="decimal"
+                    placeholder="159,90"
+                  />
+                </label>
+                <label>
+                  <span>Categoria</span>
+                  <input
+                    id="productCategory"
+                    name="category"
+                    type="text"
+                    placeholder="Vestidos"
+                    maxlength="50"
+                  />
+                </label>
+              </div>
+
+              <div class="form-row">
+                <label>
+                  <span>Tamanhos</span>
+                  <input id="productSizes" name="sizes" type="text" placeholder="P, M, G" />
+                </label>
+                <label>
+                  <span>Cores</span>
+                  <input
+                    id="productColors"
+                    name="colors"
+                    type="text"
+                    placeholder="Preto, Verde"
+                  />
+                </label>
+              </div>
+
+              <label>
+                <span>Descrição</span>
+                <textarea id="productDescription" name="description" rows="4"></textarea>
+              </label>
+
+              <label class="file-picker">
+                <span>Foto da peça</span>
+                <input id="productImage" name="image" type="file" accept="image/*" />
+                <strong>Selecionar imagem</strong>
+              </label>
+              <div class="image-preview" id="imagePreview">Sem foto</div>
+
+              <div class="toggle-grid">
+                <label class="toggle">
+                  <input id="productActive" type="checkbox" checked />
+                  <span>Mostrar no site</span>
+                </label>
+                <label class="toggle">
+                  <input id="productInStock" type="checkbox" checked />
+                  <span>Disponível</span>
+                </label>
+                <label class="toggle">
+                  <input id="productFeatured" type="checkbox" />
+                  <span>Destaque</span>
+                </label>
+              </div>
+
+              <button class="button button-primary" type="submit">Salvar peça</button>
+              <p class="form-message" id="productMessage" role="status"></p>
+            </form>
+
+            <section class="admin-panel">
+              <div class="panel-heading">
+                <div>
+                  <p class="eyebrow">Vitrine</p>
+                  <h2>Peças cadastradas</h2>
+                </div>
+                <label class="compact-search">
+                  <span>Buscar</span>
+                  <input id="adminSearch" type="search" placeholder="Nome ou categoria" />
+                </label>
+              </div>
+              <div class="admin-product-list" id="adminProductList"></div>
+              <div class="empty-state compact" id="adminEmptyState" hidden>
+                <h3>Nenhuma peça cadastrada</h3>
+                <p>Use o formulário ao lado para colocar a primeira roupa no catálogo.</p>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section class="admin-tab" id="settingsTab">
+          <form class="admin-panel settings-form" id="settingsForm">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Loja</p>
+                <h2>Dados do catálogo</h2>
+              </div>
+            </div>
+
+            <label>
+              <span>Nome da loja</span>
+              <input id="settingStoreName" name="storeName" type="text" maxlength="70" />
+            </label>
+
+            <label>
+              <span>Frase da capa</span>
+              <input id="settingTagline" name="tagline" type="text" maxlength="180" />
+            </label>
+
+            <div class="form-row">
+              <label>
+                <span>WhatsApp</span>
+                <input
+                  id="settingWhatsapp"
+                  name="whatsapp"
+                  type="tel"
+                  placeholder="5511999999999"
+                />
+              </label>
+              <label>
+                <span>Instagram</span>
+                <input
+                  id="settingInstagram"
+                  name="instagram"
+                  type="text"
+                  placeholder="@minhaloja"
+                />
+              </label>
+            </div>
+
+            <label>
+              <span>Endereço ou retirada</span>
+              <input id="settingAddress" name="address" type="text" maxlength="160" />
+            </label>
+
+            <label>
+              <span>Chamada curta</span>
+              <input id="settingNotice" name="notice" type="text" maxlength="100" />
+            </label>
+
+            <button class="button button-primary" type="submit">Salvar dados da loja</button>
+            <p class="form-message" id="settingsMessage" role="status"></p>
+          </form>
+        </section>
+      </main>
+    </div>
+
+    <script src="/admin.js" type="module"></script>
+  </body>
+</html>

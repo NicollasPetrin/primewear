@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Catálogo | Primewear Imports</title>
+    <meta
+      name="description"
+      content="Catálogo online de roupas com novidades, tamanhos, cores e atendimento por WhatsApp."
+    />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body class="store-page">
+    <header class="site-header">
+      <a class="brand" href="/">
+        <img src="/assets/primewear-logo-cropped.png" alt="Primewear Imports" />
+        <span data-store-name>Primewear Imports</span>
+      </a>
+      <nav class="site-nav" aria-label="Navegação principal">
+        <a href="#catalogo">Catálogo</a>
+        <a href="#contato">Contato</a>
+        <a class="nav-action" data-whatsapp-link href="#">WhatsApp</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="hero" aria-labelledby="hero-title">
+        <img
+          class="hero-image"
+          src="/assets/boutique-hero.png"
+          alt="Araras e peças de roupa organizadas em uma loja"
+          data-hero-image
+        />
+        <div class="hero-shade"></div>
+        <div class="hero-content">
+          <img class="hero-logo" src="/assets/primewear-logo-cropped.png" alt="Primewear Imports" />
+          <p class="eyebrow" data-store-notice>Novidades selecionadas para você</p>
+          <h1 id="hero-title" data-store-name>Primewear Imports</h1>
+          <p data-store-tagline>Moda importada com curadoria, elegância e pronta entrega.</p>
+          <div class="hero-actions">
+            <a class="button button-primary" href="#catalogo">Ver catálogo</a>
+            <a class="button button-ghost" data-whatsapp-link href="#">Chamar no WhatsApp</a>
+          </div>
+        </div>
+      </section>
+
+      <section class="catalog-band" id="catalogo" aria-labelledby="catalog-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Vitrine</p>
+            <h2 id="catalog-title">Peças disponíveis</h2>
+          </div>
+          <p class="catalog-count" id="catalogCount">Carregando peças...</p>
+        </div>
+
+        <form class="catalog-tools" id="catalogFilters" aria-label="Filtros do catálogo">
+          <label>
+            <span>Buscar</span>
+            <input
+              id="searchInput"
+              type="search"
+              placeholder="Vestido, calça, cor..."
+              autocomplete="off"
+            />
+          </label>
+          <label>
+            <span>Categoria</span>
+            <select id="categoryFilter">
+              <option value="">Todas</option>
+            </select>
+          </label>
+          <label>
+            <span>Tamanho</span>
+            <select id="sizeFilter">
+              <option value="">Todos</option>
+            </select>
+          </label>
+          <label>
+            <span>Cor</span>
+            <select id="colorFilter">
+              <option value="">Todas</option>
+            </select>
+          </label>
+          <label>
+            <span>Ordenar</span>
+            <select id="sortFilter">
+              <option value="featured">Destaques</option>
+              <option value="newest">Mais recentes</option>
+              <option value="price-asc">Menor preço</option>
+              <option value="price-desc">Maior preço</option>
+            </select>
+          </label>
+        </form>
+
+        <div class="product-grid" id="productGrid" aria-live="polite"></div>
+        <div class="empty-state" id="emptyState" hidden>
+          <h3>Nenhuma peça encontrada</h3>
+          <p>Use outros filtros ou fale com a loja para saber das novidades.</p>
+          <a class="button button-primary" data-whatsapp-link href="#">Falar com a loja</a>
+        </div>
+      </section>
+
+      <section class="contact-band" id="contato" aria-labelledby="contact-title">
+        <div>
+          <p class="eyebrow">Atendimento</p>
+          <h2 id="contact-title">Gostou de alguma peça?</h2>
+          <p>
+            Envie a peça pelo WhatsApp e combine disponibilidade, entrega ou retirada.
+          </p>
+        </div>
+        <div class="contact-actions">
+          <a class="button button-primary" data-whatsapp-link href="#">Abrir WhatsApp</a>
+          <a class="button button-quiet" id="instagramLink" href="#" hidden>Instagram</a>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <span data-store-name>Minha Loja</span>
+      <span id="storeAddress"></span>
+      <a href="/admin">Painel administrativo</a>
+    </footer>
+
+    <dialog class="product-dialog" id="productDialog">
+      <button class="icon-close" id="closeDialog" type="button" aria-label="Fechar">
+        ×
+      </button>
+      <div class="dialog-body" id="dialogBody"></div>
+    </dialog>
+
+    <script src="/app.js" type="module"></script>
+  </body>
+</html>

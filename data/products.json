@@ -1,0 +1,24 @@
+[
+  {
+    "id": "c26ca7d5-f213-4333-9560-40cc7189a3a3",
+    "name": "Blusa Balenciaga",
+    "price": 450,
+    "category": "Blusas",
+    "sizes": [
+      "S",
+      "M",
+      "L",
+      "XL"
+    ],
+    "colors": [
+      "Preto"
+    ],
+    "description": "",
+    "image": "/uploads/1781889792334-9826cd932a0512c7.jpg",
+    "featured": false,
+    "inStock": true,
+    "active": true,
+    "createdAt": "2026-06-19T17:23:12.335Z",
+    "updatedAt": "2026-06-19T17:23:12.335Z"
+  }
+]
