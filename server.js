@@ -39,7 +39,7 @@ const defaultSettings = {
   storeName: "Primewear Imports",
   tagline: "Moda importada com curadoria, elegancia e pronta entrega.",
   whatsapp: "5511989925108",
-  instagram: "",
+  instagram: "https://www.instagram.com/primewearimports/",
   address: "",
   notice: "Estilo global para o seu guarda-roupa",
   heroImage: "/assets/boutique-hero.png"

@@ -93,9 +93,9 @@ function applySettings(settings) {
     });
   });
 
-  if (settings.instagram) {
-    const username = settings.instagram.replace(/^@/, "");
-    elements.instagram.href = `https://instagram.com/${encodeURIComponent(username)}`;
+  const instagramUrl = buildInstagramUrl(settings.instagram);
+  if (instagramUrl) {
+    elements.instagram.href = instagramUrl;
     elements.instagram.hidden = false;
   }
 
@@ -431,6 +431,21 @@ function buildWhatsappUrl(message) {
   }
 
   return `https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(message)}`;
+}
+
+function buildInstagramUrl(value) {
+  const instagram = String(value || "").trim();
+
+  if (!instagram) {
+    return "";
+  }
+
+  if (/^https?:\/\//i.test(instagram)) {
+    return instagram;
+  }
+
+  const username = instagram.replace(/^@/, "");
+  return `https://www.instagram.com/${encodeURIComponent(username)}/`;
 }
 
 function escapeHtml(value) {

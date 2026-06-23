@@ -126,6 +126,7 @@ async function handleLogin(event) {
     applySessionState(await fetchJson("/api/auth/me"));
     message.textContent = "";
     await showAdmin();
+    openProductRegistration();
   } catch (error) {
     message.textContent = error.message;
   }
@@ -140,6 +141,13 @@ async function showAdmin() {
   loginView.hidden = true;
   adminApp.hidden = false;
   await loadAdminData();
+}
+
+function openProductRegistration() {
+  selectTab("products");
+  resetProductForm();
+  document.querySelector("#productsTab").scrollIntoView({ behavior: "smooth", block: "start" });
+  fields.productName.focus({ preventScroll: true });
 }
 
 async function loadAdminData() {
