@@ -12,14 +12,36 @@
   </head>
   <body class="store-page">
     <header class="site-header">
+      <button class="menu-toggle" id="menuToggle" type="button" aria-label="Abrir menu" aria-expanded="false" aria-controls="siteNav">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
       <a class="brand" href="/">
         <img src="/assets/primewear-logo-cropped.png" alt="Primewear Imports" />
         <span data-store-name>Primewear Imports</span>
       </a>
-      <nav class="site-nav" aria-label="Navegação principal">
-        <a href="#catalogo">Catálogo</a>
-        <a href="#contato">Contato</a>
-        <a class="nav-action" data-whatsapp-link href="#">WhatsApp</a>
+      <nav class="site-nav" id="siteNav" aria-label="Navegação principal">
+        <a href="/" data-nav-close>INÍCIO</a>
+        <button class="nav-link-button" type="button" data-nav-preset="newest">ENVIO IMEDIATO <span class="nav-bolt">⚡</span></button>
+        <a href="#catalogo" data-nav-close>LOJA</a>
+        <div class="nav-dropdown">
+          <button class="nav-link-button" type="button" data-nav-dropdown aria-expanded="false">ROUPAS <span class="nav-chevron">⌄</span></button>
+          <div class="nav-dropdown-menu" id="navClothingMenu"></div>
+        </div>
+        <div class="nav-dropdown">
+          <button class="nav-link-button" type="button" data-nav-dropdown aria-expanded="false">SNEAKERS <span class="nav-chevron">⌄</span></button>
+          <div class="nav-dropdown-menu" id="navSneakersMenu"></div>
+        </div>
+        <div class="nav-dropdown">
+          <button class="nav-link-button" type="button" data-nav-dropdown aria-expanded="false">ACESSÓRIOS <span class="nav-chevron">⌄</span></button>
+          <div class="nav-dropdown-menu" id="navAccessoriesMenu"></div>
+        </div>
+        <button class="nav-link-button" type="button" data-nav-search="conjunto">CONJUNTOS</button>
+        <div class="nav-dropdown">
+          <button class="nav-link-button" type="button" data-nav-dropdown aria-expanded="false">MARCAS <span class="nav-chevron">⌄</span></button>
+          <div class="nav-dropdown-menu" id="navBrandsMenu"></div>
+        </div>
       </nav>
     </header>
 
@@ -53,11 +75,7 @@
           <p class="catalog-count" id="catalogCount">Carregando peças...</p>
         </div>
 
-        <div class="catalog-filter-bar">
-          <button class="button button-primary filter-open-button" id="openFiltersButton" type="button">
-            Filtros
-            <span class="active-filter-count" id="activeFilterCount" hidden>0</span>
-          </button>
+        <form class="catalog-tools" id="catalogFilters" aria-label="Filtros do catálogo">
           <label class="catalog-search">
             <span>Buscar</span>
             <input
@@ -67,57 +85,48 @@
               autocomplete="off"
             />
           </label>
-        </div>
 
-        <div class="filter-overlay" id="filterOverlay" hidden></div>
-        <aside class="filter-drawer" id="filterDrawer" aria-labelledby="filterDrawerTitle" aria-hidden="true" inert>
-          <div class="filter-drawer-header">
-            <div>
-              <p class="eyebrow">Filtros</p>
-              <h3 id="filterDrawerTitle">Categorias</h3>
+          <fieldset class="gender-filter" id="genderFilterGroup">
+            <legend>Filtro</legend>
+            <div class="segmented-filter">
+              <button class="filter-pill is-active" type="button" data-gender-filter="" aria-pressed="true">Todos</button>
+              <button class="filter-pill" type="button" data-gender-filter="feminine" aria-pressed="false">Feminino</button>
+              <button class="filter-pill" type="button" data-gender-filter="masculine" aria-pressed="false">Masculino</button>
             </div>
-            <button class="filter-close-button" id="closeFiltersButton" type="button" aria-label="Fechar filtros">×</button>
-          </div>
+          </fieldset>
 
-          <div class="filter-groups" id="filterGroups" aria-label="Categorias rápidas"></div>
+          <label>
+            <span>Tamanho</span>
+            <select id="sizeFilter">
+              <option value="">Todos</option>
+            </select>
+          </label>
 
-          <form class="catalog-tools" id="catalogFilters" aria-label="Filtros do catálogo">
-            <label>
-              <span>Categoria</span>
-              <select id="categoryFilter">
-                <option value="">Todas</option>
-              </select>
-            </label>
-            <label>
-              <span>Marca</span>
-              <select id="brandFilter">
-                <option value="">Todas</option>
-              </select>
-            </label>
-            <label>
-              <span>Tamanho</span>
-              <select id="sizeFilter">
-                <option value="">Todos</option>
-              </select>
-            </label>
-            <label>
-              <span>Cor</span>
-              <select id="colorFilter">
-                <option value="">Todas</option>
-              </select>
-            </label>
-            <label>
-              <span>Ordenar</span>
-              <select id="sortFilter">
-                <option value="featured">Destaques</option>
-                <option value="newest">Mais recentes</option>
-                <option value="price-asc">Menor preço</option>
-                <option value="price-desc">Maior preço</option>
-              </select>
-            </label>
-            <button class="button button-quiet" id="clearFiltersButton" type="button">Limpar filtros</button>
-          </form>
-        </aside>
+          <label>
+            <span>Ordenar</span>
+            <select id="sortFilter">
+              <option value="featured">Destaques</option>
+              <option value="newest">Mais recentes</option>
+              <option value="price-asc">Menor preço</option>
+              <option value="price-desc">Maior preço</option>
+            </select>
+          </label>
+
+          <select id="categoryFilter" hidden>
+            <option value="">Todas</option>
+          </select>
+          <select id="brandFilter" hidden>
+            <option value="">Todas</option>
+          </select>
+          <select id="colorFilter" hidden>
+            <option value="">Todas</option>
+          </select>
+
+          <button class="button button-quiet clear-filter-button" id="clearFiltersButton" type="button">
+            Limpar filtros
+            <span class="active-filter-count" id="activeFilterCount" hidden>0</span>
+          </button>
+        </form>
 
         <div class="product-grid" id="productGrid" aria-live="polite"></div>
         <div class="empty-state" id="emptyState" hidden>

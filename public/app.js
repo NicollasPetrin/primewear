@@ -12,6 +12,7 @@ const state = {
   filters: {
     search: "",
     group: "",
+    gender: "",
     category: "",
     brand: "",
     size: "",
@@ -25,11 +26,13 @@ const elements = {
   empty: document.querySelector("#emptyState"),
   count: document.querySelector("#catalogCount"),
   filtersForm: document.querySelector("#catalogFilters"),
-  filterDrawer: document.querySelector("#filterDrawer"),
-  filterOverlay: document.querySelector("#filterOverlay"),
-  openFilters: document.querySelector("#openFiltersButton"),
-  closeFilters: document.querySelector("#closeFiltersButton"),
-  filterGroups: document.querySelector("#filterGroups"),
+  menuToggle: document.querySelector("#menuToggle"),
+  siteNav: document.querySelector("#siteNav"),
+  navClothing: document.querySelector("#navClothingMenu"),
+  navSneakers: document.querySelector("#navSneakersMenu"),
+  navAccessories: document.querySelector("#navAccessoriesMenu"),
+  navBrands: document.querySelector("#navBrandsMenu"),
+  genderGroup: document.querySelector("#genderFilterGroup"),
   activeFilterCount: document.querySelector("#activeFilterCount"),
   clearFilters: document.querySelector("#clearFiltersButton"),
   search: document.querySelector("#searchInput"),
@@ -136,32 +139,75 @@ function bindEvents() {
     event.preventDefault();
   });
 
-  elements.openFilters.addEventListener("click", openFiltersDrawer);
-  elements.closeFilters.addEventListener("click", closeFiltersDrawer);
-  elements.filterOverlay.addEventListener("click", closeFiltersDrawer);
+  elements.menuToggle.addEventListener("click", toggleSiteMenu);
   elements.clearFilters.addEventListener("click", () => {
     resetFilters();
     renderProducts();
   });
 
-  elements.filterGroups.addEventListener("click", (event) => {
-    const button = event.target.closest("[data-filter-group]");
+  elements.genderGroup.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-gender-filter]");
 
     if (!button) {
       return;
     }
 
-    state.filters.group = button.dataset.filterGroup;
-    state.filters.category = button.dataset.filterCategory || "";
-    state.filters.brand = button.dataset.filterBrand || "";
-    syncFilterControls();
+    state.filters.gender = button.dataset.genderFilter;
+    syncGenderButtons();
     renderProducts();
   });
 
-  document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && elements.filterDrawer.classList.contains("is-open")) {
-      closeFiltersDrawer();
+  elements.siteNav.addEventListener("click", (event) => {
+    const dropdownButton = event.target.closest("[data-nav-dropdown]");
+    const filterButton = event.target.closest("[data-nav-group], [data-nav-brand], [data-nav-category], [data-nav-search], [data-nav-preset]");
+    const closeLink = event.target.closest("[data-nav-close]");
+
+    if (dropdownButton) {
+      toggleNavDropdown(dropdownButton);
+      return;
     }
+
+    if (filterButton) {
+      applyNavFilter(filterButton);
+      return;
+    }
+
+    if (closeLink) {
+      closeSiteMenu();
+    }
+  });
+
+  document.addEventListener("click", (event) => {
+    if (event.target.closest(".site-header")) {
+      return;
+    }
+
+    closeNavDropdowns();
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      closeSiteMenu();
+      closeNavDropdowns();
+    }
+  });
+
+  document.addEventListener("focusin", (event) => {
+    if (event.target.closest(".site-header")) {
+      return;
+    }
+
+    closeNavDropdowns();
+  });
+
+  elements.siteNav.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape") {
+      return;
+    }
+
+    closeSiteMenu();
+    closeNavDropdowns();
+    elements.menuToggle.focus();
   });
 
   elements.grid.addEventListener("click", (event) => {
@@ -252,6 +298,7 @@ function resetFilters() {
   state.filters = {
     search: "",
     group: "",
+    gender: "",
     category: "",
     brand: "",
     size: "",
@@ -259,6 +306,7 @@ function resetFilters() {
     sort: "featured"
   };
   syncFilterControls();
+  syncGenderButtons();
 }
 
 function updateActiveFilterCount() {
@@ -266,6 +314,7 @@ function updateActiveFilterCount() {
     state.filters.search,
     state.filters.group || state.filters.category,
     state.filters.group ? "" : state.filters.brand,
+    state.filters.gender,
     state.filters.size,
     state.filters.color,
     state.filters.sort !== "featured" ? state.filters.sort : ""
@@ -275,119 +324,163 @@ function updateActiveFilterCount() {
   elements.activeFilterCount.textContent = count;
 }
 
-function openFiltersDrawer() {
-  elements.filterDrawer.classList.add("is-open");
-  elements.filterDrawer.setAttribute("aria-hidden", "false");
-  elements.filterDrawer.removeAttribute("inert");
-  elements.filterOverlay.hidden = false;
-  document.body.classList.add("filters-open");
-  elements.closeFilters.focus();
+function syncGenderButtons() {
+  elements.genderGroup.querySelectorAll("[data-gender-filter]").forEach((button) => {
+    const active = button.dataset.genderFilter === state.filters.gender;
+    button.classList.toggle("is-active", active);
+    button.setAttribute("aria-pressed", String(active));
+  });
 }
 
-function closeFiltersDrawer() {
-  elements.filterDrawer.classList.remove("is-open");
-  elements.filterDrawer.setAttribute("aria-hidden", "true");
-  elements.filterDrawer.setAttribute("inert", "");
-  elements.filterOverlay.hidden = true;
-  document.body.classList.remove("filters-open");
-  elements.openFilters.focus();
+function toggleSiteMenu() {
+  const open = !elements.siteNav.classList.contains("is-open");
+  elements.siteNav.classList.toggle("is-open", open);
+  elements.menuToggle.classList.toggle("is-open", open);
+  elements.menuToggle.setAttribute("aria-expanded", String(open));
+
+  if (!open) {
+    closeNavDropdowns();
+  }
+}
+
+function closeSiteMenu() {
+  elements.siteNav.classList.remove("is-open");
+  elements.menuToggle.classList.remove("is-open");
+  elements.menuToggle.setAttribute("aria-expanded", "false");
+  closeNavDropdowns();
+}
+
+function toggleNavDropdown(button) {
+  const dropdown = button.closest(".nav-dropdown");
+  const open = !dropdown.classList.contains("is-open");
+
+  closeNavDropdowns(dropdown);
+  dropdown.classList.toggle("is-open", open);
+  button.setAttribute("aria-expanded", String(open));
+}
+
+function closeNavDropdowns(except = null) {
+  elements.siteNav.querySelectorAll(".nav-dropdown").forEach((dropdown) => {
+    if (dropdown === except) {
+      return;
+    }
+
+    dropdown.classList.remove("is-open");
+    dropdown.querySelector("[data-nav-dropdown]")?.setAttribute("aria-expanded", "false");
+  });
+}
+
+function applyNavFilter(button) {
+  if (button.dataset.navPreset === "newest") {
+    state.filters.group = "";
+    state.filters.category = "";
+    state.filters.brand = "";
+    state.filters.search = "";
+    state.filters.sort = "newest";
+  } else {
+    state.filters.group = button.dataset.navGroup || "";
+    state.filters.category = button.dataset.navCategory || "";
+    state.filters.brand = button.dataset.navBrand || "";
+    state.filters.search = button.dataset.navSearch || "";
+    state.filters.sort = "featured";
+  }
+
+  syncFilterControls();
+  renderProducts();
+  closeNavDropdowns();
+  closeSiteMenu();
+  document.querySelector("#catalogo").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function updateNavState() {
+  elements.siteNav.querySelectorAll(".nav-menu-item, [data-nav-search], [data-nav-preset]").forEach((button) => {
+    const active =
+      (button.dataset.navPreset === "newest" && state.filters.sort === "newest") ||
+      (button.dataset.navSearch && state.filters.search === button.dataset.navSearch) ||
+      (button.dataset.navGroup === state.filters.group &&
+        button.dataset.navCategory === state.filters.category &&
+        button.dataset.navBrand === state.filters.brand &&
+        (button.dataset.navGroup || button.dataset.navCategory || button.dataset.navBrand));
+
+    button.classList.toggle("is-active", Boolean(active));
+  });
 }
 
 function buildFilters(products) {
   fillSelect(elements.category, unique(products.map((product) => product.category)), "Todas");
   fillSelect(elements.brand, unique(products.map((product) => product.brand)), "Todas");
-  fillSelect(elements.size, unique(products.flatMap((product) => product.sizes || [])), "Todos");
+  fillSelect(elements.size, catalogSizes(products), "Todos");
   fillSelect(elements.color, unique(products.flatMap((product) => product.colors || [])), "Todas");
-  renderFilterGroups(products);
+  renderNavMenus(products);
 }
 
-function renderFilterGroups(products) {
-  const groups = [
-    {
-      id: "clothing",
-      title: "Roupas",
-      allLabel: "Ver todos em roupas",
-      empty: "Nenhuma roupa cadastrada.",
-      type: "category",
-      values: sortedByPreference(
-        unique(products.filter((product) => productGroup(product) === "clothing").map((product) => product.category)),
-        ["shorts", "calças", "blusas", "camisetas"]
-      )
-    },
-    {
-      id: "sneakers",
-      title: "Tênis",
-      allLabel: "Ver todos em tênis",
-      empty: "Nenhum tênis cadastrado.",
-      type: "brand",
-      values: unique(products.filter((product) => productGroup(product) === "sneakers").map((product) => product.brand))
-    },
-    {
-      id: "accessories",
-      title: "Acessórios",
-      allLabel: "Ver todos em acessórios",
-      empty: "Nenhum acessório cadastrado.",
-      type: "category",
-      values: sortedByPreference(
-        unique(products.filter((product) => productGroup(product) === "accessories").map((product) => product.category)),
-        ["relógios", "óculos de sol", "pulseiras", "colares"]
-      )
-    }
+function renderNavMenus(products) {
+  const clothingCategories = sortedByPreference(
+    unique(products.filter((product) => productGroup(product) === "clothing").map((product) => product.category)),
+    ["shorts", "calças", "blusas", "camisetas", "conjuntos"]
+  );
+  const sneakerBrands = unique(products.filter((product) => productGroup(product) === "sneakers").map((product) => product.brand));
+  const accessoryCategories = sortedByPreference(
+    unique(products.filter((product) => productGroup(product) === "accessories").map((product) => product.category)),
+    ["relógios", "óculos de sol", "pulseiras", "colares"]
+  );
+  const brands = unique(products.map((product) => product.brand));
+
+  elements.navClothing.innerHTML = renderNavMenuItems({
+    allLabel: "Ver todos em roupas",
+    emptyLabel: "Nenhuma roupa cadastrada.",
+    group: "clothing",
+    values: clothingCategories,
+    type: "category"
+  });
+  elements.navSneakers.innerHTML = renderNavMenuItems({
+    allLabel: "Ver todos em sneakers",
+    emptyLabel: "Nenhum sneaker cadastrado.",
+    group: "sneakers",
+    values: sneakerBrands,
+    type: "brand"
+  });
+  elements.navAccessories.innerHTML = renderNavMenuItems({
+    allLabel: "Ver todos em acessórios",
+    emptyLabel: "Nenhum acessório cadastrado.",
+    group: "accessories",
+    values: accessoryCategories,
+    type: "category"
+  });
+  elements.navBrands.innerHTML = brands.length
+    ? brands.map((brand) => navMenuButton(brand, { brand })).join("")
+    : `<p class="nav-menu-empty">Nenhuma marca cadastrada.</p>`;
+}
+
+function renderNavMenuItems({ allLabel, emptyLabel, group, values, type }) {
+  const items = [
+    navMenuButton(allLabel, { group }),
+    ...values.map((value) =>
+      navMenuButton(value, {
+        group,
+        category: type === "category" ? value : "",
+        brand: type === "brand" ? value : ""
+      })
+    )
   ];
 
-  elements.filterGroups.innerHTML = groups.map((group) => renderFilterGroup(group, products)).join("");
+  if (values.length === 0) {
+    items.push(`<p class="nav-menu-empty">${escapeHtml(emptyLabel)}</p>`);
+  }
+
+  return items.join("");
 }
 
-function renderFilterGroup(group, products) {
-  const groupCount = products.filter((product) => productGroup(product) === group.id).length;
-  const allActive = state.filters.group === group.id && !state.filters.category && !state.filters.brand;
-
-  return `
-    <section class="filter-section">
-      <div class="filter-section-title">
-        <h4>${escapeHtml(group.title)}</h4>
-        <span>${groupCount}</span>
-      </div>
-      <button class="filter-option filter-option-all${allActive ? " is-active" : ""}" type="button" data-filter-group="${escapeAttr(group.id)}">
-        <span>${escapeHtml(group.allLabel)}</span>
-        <strong>${groupCount}</strong>
-      </button>
-      <div class="filter-option-list">
-        ${
-          group.values.length
-            ? group.values.map((value) => renderFilterOption(group, value, products)).join("")
-            : `<p class="filter-empty">${escapeHtml(group.empty)}</p>`
-        }
-      </div>
-    </section>
-  `;
-}
-
-function renderFilterOption(group, value, products) {
-  const category = group.type === "category" ? value : "";
-  const brand = group.type === "brand" ? value : "";
-  const count = products.filter((product) => {
-    return (
-      productGroup(product) === group.id &&
-      (!category || product.category === category) &&
-      (!brand || product.brand === brand)
-    );
-  }).length;
-  const active =
-    state.filters.group === group.id &&
-    (!category || state.filters.category === category) &&
-    (!brand || state.filters.brand === brand);
-
+function navMenuButton(label, { group = "", category = "", brand = "" } = {}) {
   return `
     <button
-      class="filter-option${active ? " is-active" : ""}"
+      class="nav-menu-item"
       type="button"
-      data-filter-group="${escapeAttr(group.id)}"
-      data-filter-category="${escapeAttr(category)}"
-      data-filter-brand="${escapeAttr(brand)}"
+      data-nav-group="${escapeAttr(group)}"
+      data-nav-category="${escapeAttr(category)}"
+      data-nav-brand="${escapeAttr(brand)}"
     >
-      <span>${escapeHtml(value)}</span>
-      <strong>${count}</strong>
+      ${escapeHtml(label)}
     </button>
   `;
 }
@@ -430,6 +523,32 @@ function unique(values) {
   return [...new Set(values.filter(Boolean))].sort((a, b) => a.localeCompare(b, "pt-BR"));
 }
 
+function catalogSizes(products) {
+  const defaultSizes = ["PP", "P", "M", "G", "GG", "XG", "XGG", "34", "35", "36", "37", "38", "39", "40", "41", "42", "43", "44"];
+  return sortSizes(unique([...defaultSizes, ...products.flatMap((product) => product.sizes || [])]));
+}
+
+function sortSizes(values) {
+  const preferred = ["PP", "P", "M", "G", "GG", "XG", "XGG", "33", "34", "35", "36", "37", "38", "39", "40", "41", "42", "43", "44", "45"];
+
+  return [...values].sort((a, b) => {
+    const aIndex = sizeIndex(a, preferred);
+    const bIndex = sizeIndex(b, preferred);
+
+    if (aIndex !== bIndex) {
+      return aIndex - bIndex;
+    }
+
+    return String(a).localeCompare(String(b), "pt-BR", { numeric: true });
+  });
+}
+
+function sizeIndex(value, preferred) {
+  const normalized = normalizeForFilter(value);
+  const index = preferred.findIndex((item) => normalizeForFilter(item) === normalized);
+  return index === -1 ? 999 : index;
+}
+
 function productGroup(product = {}) {
   const text = normalizeForFilter([product.category, product.name, product.description].join(" "));
   const sneakerTerms = ["tênis", "tenis", "sneaker", "sneakers", "calçado", "calçados"];
@@ -467,6 +586,29 @@ function productGroup(product = {}) {
   return "clothing";
 }
 
+function productAudiences(product = {}) {
+  const explicit = normalizeForFilter(product.audience);
+  const text = normalizeForFilter([product.category, product.name, product.description].join(" "));
+  const feminineTerms = ["feminino", "feminina", "mulher", "mulheres", "female", "ladies"];
+  const masculineTerms = ["masculino", "masculina", "homem", "homens", "male", "men"];
+  const hasFeminine =
+    ["feminine", "feminino", "feminina"].includes(explicit) ||
+    feminineTerms.some((term) => text.includes(normalizeForFilter(term)));
+  const hasMasculine =
+    ["masculine", "masculino", "masculina"].includes(explicit) ||
+    masculineTerms.some((term) => text.includes(normalizeForFilter(term)));
+
+  if (explicit === "unissex" || explicit === "unisex") {
+    return ["feminine", "masculine"];
+  }
+
+  if (hasFeminine || hasMasculine) {
+    return [hasFeminine ? "feminine" : "", hasMasculine ? "masculine" : ""].filter(Boolean);
+  }
+
+  return ["feminine", "masculine"];
+}
+
 function normalizeForFilter(value) {
   return String(value || "")
     .normalize("NFD")
@@ -481,7 +623,8 @@ function renderProducts() {
   elements.empty.hidden = products.length > 0;
   elements.count.textContent = `${products.length} ${products.length === 1 ? "peça" : "peças"}`;
   updateActiveFilterCount();
-  renderFilterGroups(state.products);
+  syncGenderButtons();
+  updateNavState();
 
   products.forEach((product) => {
     elements.grid.append(createProductCard(product));
@@ -489,7 +632,7 @@ function renderProducts() {
 }
 
 function filteredProducts() {
-  const { search, group, category, brand, size, color, sort } = state.filters;
+  const { search, group, gender, category, brand, size, color, sort } = state.filters;
   const normalizedSearch = normalizeForFilter(search);
 
   return state.products
@@ -506,6 +649,7 @@ function filteredProducts() {
       return (
         (!normalizedSearch || haystack.includes(normalizedSearch)) &&
         (!group || productGroup(product) === group) &&
+        (!gender || productAudiences(product).includes(gender)) &&
         (!category || product.category === category) &&
         (!brand || product.brand === brand) &&
         (!size || (product.sizes || []).includes(size)) &&
