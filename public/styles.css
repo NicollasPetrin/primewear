@@ -266,16 +266,195 @@ textarea {
   font-weight: 800;
 }
 
-.catalog-tools {
+.catalog-filter-bar {
   display: grid;
-  grid-template-columns: minmax(180px, 1.4fr) repeat(5, minmax(130px, 1fr));
+  grid-template-columns: max-content minmax(260px, 520px);
+  align-items: end;
+  justify-content: start;
   gap: 12px;
   margin: 28px 0;
-  padding: 14px;
+}
+
+.filter-open-button {
+  min-width: 132px;
+  justify-content: center;
+}
+
+.active-filter-count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 7px;
+  margin-left: 4px;
+  border-radius: 999px;
+  background: var(--navy);
+  color: white;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.catalog-search {
+  max-width: 520px;
+}
+
+body.filters-open {
+  overflow: hidden;
+}
+
+.filter-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 45;
+  background: rgba(7, 21, 37, 0.38);
+}
+
+.filter-overlay[hidden] {
+  display: none;
+}
+
+.filter-drawer {
+  position: fixed;
+  inset: 0 0 0 auto;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: min(430px, calc(100vw - 24px));
+  padding: 26px;
+  overflow-y: auto;
   background: var(--surface);
-  border: 1px solid rgba(184, 137, 58, 0.26);
+  border-left: 1px solid rgba(184, 137, 58, 0.28);
+  box-shadow: -24px 0 58px rgba(7, 21, 37, 0.22);
+  transform: translateX(108%);
+  transition: transform 220ms ease;
+}
+
+.filter-drawer.is-open {
+  transform: translateX(0);
+}
+
+.filter-drawer-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.filter-drawer-header h3 {
+  margin: 0;
+  font-size: 26px;
+  line-height: 1.1;
+}
+
+.filter-close-button {
+  display: inline-grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 auto;
+  border: 1px solid var(--line);
   border-radius: 8px;
-  box-shadow: 0 12px 28px rgba(7, 21, 37, 0.06);
+  background: var(--surface);
+  color: var(--ink);
+  cursor: pointer;
+  font-size: 26px;
+  line-height: 1;
+}
+
+.filter-groups,
+.filter-option-list,
+.catalog-tools {
+  display: grid;
+  gap: 12px;
+}
+
+.filter-section {
+  padding: 14px;
+  border: 1px solid rgba(184, 137, 58, 0.24);
+  border-radius: 8px;
+  background: rgba(247, 244, 237, 0.72);
+}
+
+.filter-section-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.filter-section-title h4 {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.2;
+}
+
+.filter-section-title span,
+.filter-option strong {
+  display: inline-grid;
+  place-items: center;
+  min-width: 26px;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: rgba(184, 137, 58, 0.14);
+  color: var(--berry-dark);
+  font-size: 12px;
+}
+
+.filter-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: 42px;
+  padding: 9px 11px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: white;
+  color: var(--ink);
+  cursor: pointer;
+  text-align: left;
+}
+
+.filter-option span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.filter-option:hover,
+.filter-option.is-active {
+  border-color: var(--navy);
+  background: var(--navy);
+  color: white;
+}
+
+.filter-option:hover strong,
+.filter-option.is-active strong {
+  background: rgba(255, 255, 255, 0.16);
+  color: white;
+}
+
+.filter-empty {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.catalog-tools {
+  grid-template-columns: 1fr;
+  margin: 0;
+  padding: 18px 0 0;
+  border-top: 1px solid rgba(184, 137, 58, 0.22);
+}
+
+.catalog-tools .button {
+  justify-content: center;
 }
 
 label {
@@ -1003,10 +1182,6 @@ textarea:focus {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
-  .catalog-tools {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
   .admin-layout {
     grid-template-columns: 1fr;
   }
@@ -1052,6 +1227,15 @@ textarea:focus {
 
   .contact-band {
     margin: 0 22px 34px;
+  }
+
+  .catalog-filter-bar {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .catalog-search {
+    max-width: none;
   }
 
   .catalog-tools,
@@ -1136,6 +1320,11 @@ textarea:focus {
 
   .product-grid {
     grid-template-columns: 1fr;
+  }
+
+  .filter-drawer {
+    width: 100vw;
+    padding: 22px 18px;
   }
 
   .product-card {
