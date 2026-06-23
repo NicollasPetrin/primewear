@@ -163,6 +163,14 @@ function parsePrice(value, fallback = 0) {
   return Number.isFinite(price) && price >= 0 ? price : fallback;
 }
 
+function normalizeDeliveryType(value) {
+  return value === "preorder" ? "preorder" : "immediate";
+}
+
+function deliveryLabel(value) {
+  return normalizeDeliveryType(value) === "preorder" ? "Sob encomenda" : "Envio imediato";
+}
+
 function sortProducts(products) {
   return [...products].sort((a, b) => {
     if (a.featured !== b.featured) {
@@ -221,6 +229,7 @@ function normalizeProduct(input, existing = {}, files = []) {
 
   const category = cleanText(input.category ?? existing.category, 50) || "Geral";
   const brand = cleanText(input.brand ?? existing.brand, 50);
+  const deliveryType = normalizeDeliveryType(input.deliveryType ?? existing.deliveryType);
   const uploadedImages = files.map((file) => `/uploads/${file.filename}`);
   const replaceImages = parseBoolean(input.replaceImages, false);
   const existingImages = replaceImages ? [] : productImages(existing);
@@ -234,6 +243,7 @@ function normalizeProduct(input, existing = {}, files = []) {
     price: parsePrice(input.price, existing.price || 0),
     category,
     brand,
+    deliveryType,
     sizes: parseList(input.sizes ?? existing.sizes),
     colors: parseList(input.colors ?? existing.colors),
     description: cleanText(input.description ?? existing.description, 500),
@@ -263,6 +273,7 @@ function productMetaDescription(product) {
   const parts = [
     product.brand,
     product.category,
+    deliveryLabel(product.deliveryType),
     money.format(product.price || 0),
     product.sizes?.length ? `Tamanhos: ${product.sizes.join(", ")}` : "",
     product.colors?.length ? `Cores: ${product.colors.join(", ")}` : ""

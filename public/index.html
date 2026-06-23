@@ -23,7 +23,7 @@
       </a>
       <nav class="site-nav" id="siteNav" aria-label="Navegação principal">
         <a href="/" data-nav-close>INÍCIO</a>
-        <button class="nav-link-button" type="button" data-nav-preset="newest">ENVIO IMEDIATO <span class="nav-bolt">⚡</span></button>
+        <button class="nav-link-button" type="button" data-nav-delivery="immediate">ENVIO IMEDIATO <span class="nav-bolt">⚡</span></button>
         <a href="#catalogo" data-nav-close>LOJA</a>
         <div class="nav-dropdown">
           <button class="nav-link-button" type="button" data-nav-dropdown aria-expanded="false">ROUPAS <span class="nav-chevron">⌄</span></button>
@@ -103,6 +103,15 @@
               <button class="filter-pill is-active" type="button" data-gender-filter="" aria-pressed="true">Todos</button>
               <button class="filter-pill" type="button" data-gender-filter="feminine" aria-pressed="false">Feminino</button>
               <button class="filter-pill" type="button" data-gender-filter="masculine" aria-pressed="false">Masculino</button>
+            </div>
+          </fieldset>
+
+          <fieldset class="delivery-filter" id="deliveryFilterGroup">
+            <legend>Envio</legend>
+            <div class="segmented-filter">
+              <button class="filter-pill is-active" type="button" data-delivery-filter="" aria-pressed="true">Todos</button>
+              <button class="filter-pill" type="button" data-delivery-filter="immediate" aria-pressed="false">Envio imediato</button>
+              <button class="filter-pill" type="button" data-delivery-filter="preorder" aria-pressed="false">Sob encomenda</button>
             </div>
           </fieldset>
 

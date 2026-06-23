@@ -30,6 +30,7 @@ const fields = {
   productPrice: document.querySelector("#productPrice"),
   productCategory: document.querySelector("#productCategory"),
   productBrand: document.querySelector("#productBrand"),
+  productDeliveryType: document.querySelector("#productDeliveryType"),
   productSizes: document.querySelector("#productSizes"),
   productColors: document.querySelector("#productColors"),
   productDescription: document.querySelector("#productDescription"),
@@ -175,6 +176,7 @@ async function handleProductSubmit(event) {
   formData.set("active", String(fields.productActive.checked));
   formData.set("inStock", String(fields.productInStock.checked));
   formData.set("featured", String(fields.productFeatured.checked));
+  formData.set("deliveryType", fields.productDeliveryType.value);
   formData.set("replaceImages", String(shouldReplaceImages));
   formData.delete("images");
 
@@ -230,7 +232,7 @@ async function handleSettingsSubmit(event) {
 function renderAdminProducts() {
   const query = fields.adminSearch.value.trim().toLowerCase();
   const products = state.products.filter((product) => {
-    return [product.name, product.category, product.brand, product.description]
+    return [product.name, product.category, product.brand, deliveryLabel(product.deliveryType), product.description]
       .join(" ")
       .toLowerCase()
       .includes(query);
@@ -255,6 +257,7 @@ function renderAdminProducts() {
         <div class="chip-row">
           <span>${escapeHtml(product.category || "Geral")}</span>
           ${product.brand ? `<span>${escapeHtml(product.brand)}</span>` : ""}
+          <span>${escapeHtml(deliveryLabel(product.deliveryType))}</span>
           <span>${product.active ? "No site" : "Oculta"}</span>
           <span>${product.inStock ? "Disponível" : "Indisponível"}</span>
           <span>${productImages(product).length} ${productImages(product).length === 1 ? "foto" : "fotos"}</span>
@@ -284,6 +287,7 @@ function editProduct(productId) {
   fields.productPrice.value = String(product.price || "").replace(".", ",");
   fields.productCategory.value = product.category || "";
   fields.productBrand.value = product.brand || "";
+  fields.productDeliveryType.value = product.deliveryType || "immediate";
   fields.productSizes.value = (product.sizes || []).join(", ");
   fields.productColors.value = (product.colors || []).join(", ");
   fields.productDescription.value = product.description || "";
@@ -323,6 +327,7 @@ function resetProductForm() {
   fields.productInStock.checked = true;
   fields.productFeatured.checked = false;
   fields.productBrand.value = "";
+  fields.productDeliveryType.value = "immediate";
   fields.productReplaceImages.checked = false;
   fields.replaceImagesToggle.hidden = true;
   fields.productFormTitle.textContent = "Nova peça";
@@ -834,6 +839,10 @@ function applySessionState(session) {
 function productImages(product = {}) {
   const images = Array.isArray(product.images) ? product.images : [];
   return [...new Set([...images, product.image].filter(Boolean))];
+}
+
+function deliveryLabel(value) {
+  return value === "preorder" ? "Sob encomenda" : "Envio imediato";
 }
 
 async function copyProductLink(productId, button) {

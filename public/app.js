@@ -13,6 +13,7 @@ const state = {
     search: "",
     group: "",
     gender: "",
+    delivery: "",
     category: "",
     brand: "",
     size: "",
@@ -35,6 +36,7 @@ const elements = {
   navAccessories: document.querySelector("#navAccessoriesMenu"),
   navBrands: document.querySelector("#navBrandsMenu"),
   genderGroup: document.querySelector("#genderFilterGroup"),
+  deliveryGroup: document.querySelector("#deliveryFilterGroup"),
   activeFilterCount: document.querySelector("#activeFilterCount"),
   clearFilters: document.querySelector("#clearFiltersButton"),
   search: document.querySelector("#searchInput"),
@@ -169,9 +171,21 @@ function bindEvents() {
     renderProducts();
   });
 
+  elements.deliveryGroup.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-delivery-filter]");
+
+    if (!button) {
+      return;
+    }
+
+    state.filters.delivery = button.dataset.deliveryFilter;
+    syncDeliveryButtons();
+    renderProducts();
+  });
+
   elements.siteNav.addEventListener("click", (event) => {
     const dropdownButton = event.target.closest("[data-nav-dropdown]");
-    const filterButton = event.target.closest("[data-nav-group], [data-nav-brand], [data-nav-category], [data-nav-search], [data-nav-preset]");
+    const filterButton = event.target.closest("[data-nav-group], [data-nav-brand], [data-nav-category], [data-nav-search], [data-nav-delivery]");
     const closeLink = event.target.closest("[data-nav-close]");
 
     if (dropdownButton) {
@@ -311,6 +325,7 @@ function resetFilters() {
     search: "",
     group: "",
     gender: "",
+    delivery: "",
     category: "",
     brand: "",
     size: "",
@@ -319,6 +334,7 @@ function resetFilters() {
   };
   syncFilterControls();
   syncGenderButtons();
+  syncDeliveryButtons();
 }
 
 function updateActiveFilterCount() {
@@ -327,6 +343,7 @@ function updateActiveFilterCount() {
     state.filters.group || state.filters.category,
     state.filters.group ? "" : state.filters.brand,
     state.filters.gender,
+    state.filters.delivery,
     state.filters.size,
     state.filters.color,
     state.filters.sort !== "featured" ? state.filters.sort : ""
@@ -339,6 +356,14 @@ function updateActiveFilterCount() {
 function syncGenderButtons() {
   elements.genderGroup.querySelectorAll("[data-gender-filter]").forEach((button) => {
     const active = button.dataset.genderFilter === state.filters.gender;
+    button.classList.toggle("is-active", active);
+    button.setAttribute("aria-pressed", String(active));
+  });
+}
+
+function syncDeliveryButtons() {
+  elements.deliveryGroup.querySelectorAll("[data-delivery-filter]").forEach((button) => {
+    const active = button.dataset.deliveryFilter === state.filters.delivery;
     button.classList.toggle("is-active", active);
     button.setAttribute("aria-pressed", String(active));
   });
@@ -383,12 +408,16 @@ function closeNavDropdowns(except = null) {
 }
 
 function applyNavFilter(button) {
-  if (button.dataset.navPreset === "newest") {
+  if (button.dataset.navDelivery) {
     state.filters.group = "";
+    state.filters.gender = "";
     state.filters.category = "";
     state.filters.brand = "";
+    state.filters.size = "";
+    state.filters.color = "";
     state.filters.search = "";
-    state.filters.sort = "newest";
+    state.filters.delivery = button.dataset.navDelivery;
+    state.filters.sort = "featured";
   } else {
     state.filters.group = button.dataset.navGroup || "";
     state.filters.category = button.dataset.navCategory || "";
@@ -398,6 +427,7 @@ function applyNavFilter(button) {
   }
 
   syncFilterControls();
+  syncDeliveryButtons();
   renderProducts();
   closeNavDropdowns();
   closeSiteMenu();
@@ -405,9 +435,9 @@ function applyNavFilter(button) {
 }
 
 function updateNavState() {
-  elements.siteNav.querySelectorAll(".nav-menu-item, [data-nav-search], [data-nav-preset]").forEach((button) => {
+  elements.siteNav.querySelectorAll(".nav-menu-item, [data-nav-search], [data-nav-delivery]").forEach((button) => {
     const active =
-      (button.dataset.navPreset === "newest" && state.filters.sort === "newest") ||
+      (button.dataset.navDelivery && state.filters.delivery === button.dataset.navDelivery && !state.filters.brand) ||
       (button.dataset.navSearch && state.filters.search === button.dataset.navSearch) ||
       (button.dataset.navGroup === state.filters.group &&
         button.dataset.navCategory === state.filters.category &&
@@ -678,6 +708,14 @@ function productAudiences(product = {}) {
   return ["feminine", "masculine"];
 }
 
+function productDeliveryType(product = {}) {
+  return product.deliveryType === "preorder" ? "preorder" : "immediate";
+}
+
+function deliveryLabel(value) {
+  return value === "preorder" ? "Sob encomenda" : "Envio imediato";
+}
+
 function normalizeForFilter(value) {
   return String(value || "")
     .normalize("NFD")
@@ -693,6 +731,7 @@ function renderProducts() {
   elements.count.textContent = `${products.length} ${products.length === 1 ? "peça" : "peças"}`;
   updateActiveFilterCount();
   syncGenderButtons();
+  syncDeliveryButtons();
   updateNavState();
   updateBrandWallState();
 
@@ -702,7 +741,7 @@ function renderProducts() {
 }
 
 function filteredProducts() {
-  const { search, group, gender, category, brand, size, color, sort } = state.filters;
+  const { search, group, gender, delivery, category, brand, size, color, sort } = state.filters;
   const normalizedSearch = normalizeForFilter(search);
 
   return state.products
@@ -712,6 +751,7 @@ function filteredProducts() {
         product.category,
         product.brand,
         product.description,
+        deliveryLabel(productDeliveryType(product)),
         ...(product.sizes || []),
         ...(product.colors || [])
       ].join(" "));
@@ -720,6 +760,7 @@ function filteredProducts() {
         (!normalizedSearch || haystack.includes(normalizedSearch)) &&
         (!group || productGroup(product) === group) &&
         (!gender || productAudiences(product).includes(gender)) &&
+        (!delivery || productDeliveryType(product) === delivery) &&
         (!category || product.category === category) &&
         (!brand || product.brand === brand) &&
         (!size || (product.sizes || []).includes(size)) &&
@@ -746,13 +787,14 @@ function createProductCard(product) {
     <div class="product-photo" role="button" tabindex="0" data-open-product="${escapeAttr(product.id)}">
       ${currentImage ? `<img src="${escapeAttr(currentImage)}" alt="${escapeAttr(product.name)}" loading="lazy" />` : `<span>Sem foto</span>`}
       ${product.featured ? `<strong>Destaque</strong>` : ""}
+      <em class="delivery-badge">${escapeHtml(deliveryLabel(productDeliveryType(product)))}</em>
       ${renderCarouselControls(product.id, images, imageIndex)}
     </div>
     <div class="product-content">
       <p class="product-category">${escapeHtml(productSubtitle(product))}</p>
       <h3>${escapeHtml(product.name)}</h3>
       <p class="product-price">${money.format(product.price || 0)}</p>
-      <div class="chip-row">${renderChips([product.category, ...(product.sizes || []), ...(product.colors || [])])}</div>
+      <div class="chip-row">${renderChips([deliveryLabel(productDeliveryType(product)), product.category, ...(product.sizes || []), ...(product.colors || [])])}</div>
       <div class="product-actions">
         <a class="button button-primary" href="${buildWhatsappUrl(productMessage(product))}">Pedir</a>
         <button class="button button-quiet" type="button" data-open-product="${escapeAttr(product.id)}">Detalhes</button>
@@ -860,6 +902,10 @@ function renderProductDialog(product) {
           : ""
       }
       <div class="info-group">
+        <strong>Envio</strong>
+        <div class="chip-row"><span>${escapeHtml(deliveryLabel(productDeliveryType(product)))}</span></div>
+      </div>
+      <div class="info-group">
         <strong>Tamanhos</strong>
         <div class="chip-row">${renderChips(product.sizes || []) || "<span>Consultar</span>"}</div>
       </div>
@@ -921,7 +967,7 @@ function closeProductDialog() {
 }
 
 function productMessage(product) {
-  return `Olá! Tenho interesse na peça ${product.name} (${money.format(product.price || 0)}).\n\nFoto e detalhes: ${productLink(product)}`;
+  return `Olá! Tenho interesse na peça ${product.name} (${money.format(product.price || 0)}).\nEnvio: ${deliveryLabel(productDeliveryType(product))}.\n\nFoto e detalhes: ${productLink(product)}`;
 }
 
 function productLink(product) {
