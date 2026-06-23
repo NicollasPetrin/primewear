@@ -365,7 +365,7 @@ function renderProductDialog(product) {
   `;
 
   document.querySelector("#copyProductLink").addEventListener("click", async () => {
-    await navigator.clipboard.writeText(`${location.origin}/produto/${product.id}`);
+    await navigator.clipboard.writeText(productLink(product));
     document.querySelector("#copyProductLink").textContent = "Link copiado";
   });
 }
@@ -411,7 +411,11 @@ function closeProductDialog() {
 }
 
 function productMessage(product) {
-  return `Olá! Tenho interesse na peça ${product.name} (${money.format(product.price || 0)}).`;
+  return `Olá! Tenho interesse na peça ${product.name} (${money.format(product.price || 0)}).\n\nFoto e detalhes: ${productLink(product)}`;
+}
+
+function productLink(product) {
+  return `${location.origin}/produto/${encodeURIComponent(product.id)}`;
 }
 
 function productImages(product = {}) {

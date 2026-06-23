@@ -18,6 +18,8 @@ const adminPassword = process.env.ADMIN_PASSWORD || "admin123";
 const tokenSecret =
   process.env.ADMIN_TOKEN_SECRET || "catalogo-local-dev-secret-change-before-publishing";
 
+app.set("trust proxy", true);
+
 const publicDir = path.join(__dirname, "public");
 const storageDir = process.env.STORAGE_DIR ? path.resolve(process.env.STORAGE_DIR) : null;
 const bundledDataDir = path.join(__dirname, "data");
@@ -42,6 +44,11 @@ const defaultSettings = {
   notice: "Estilo global para o seu guarda-roupa",
   heroImage: "/assets/boutique-hero.png"
 };
+
+const money = new Intl.NumberFormat("pt-BR", {
+  style: "currency",
+  currency: "BRL"
+});
 
 async function ensureStorage() {
   await fs.mkdir(dataDir, { recursive: true });
@@ -165,6 +172,38 @@ function productImages(product = {}) {
   return [...new Set([...images, product.image].filter(Boolean))];
 }
 
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function requestOrigin(request) {
+  const forwardedProto = request.get("x-forwarded-proto")?.split(",")[0]?.trim();
+  const forwardedHost = request.get("x-forwarded-host")?.split(",")[0]?.trim();
+  const protocol = forwardedProto || request.protocol;
+  const host = forwardedHost || request.get("host");
+
+  return `${protocol}://${host}`;
+}
+
+function absoluteUrl(request, value) {
+  const pathOrUrl = cleanText(value, 300);
+
+  if (!pathOrUrl) {
+    return `${requestOrigin(request)}/assets/primewear-logo-cropped.png`;
+  }
+
+  if (/^https?:\/\//i.test(pathOrUrl)) {
+    return pathOrUrl;
+  }
+
+  return `${requestOrigin(request)}${pathOrUrl.startsWith("/") ? pathOrUrl : `/${pathOrUrl}`}`;
+}
+
 function normalizeProduct(input, existing = {}, files = []) {
   const name = cleanText(input.name ?? existing.name, 90);
 
@@ -210,6 +249,61 @@ function cleanSettings(input) {
     notice: cleanText(input.notice, 100) || defaultSettings.notice,
     heroImage: cleanText(input.heroImage, 180) || defaultSettings.heroImage
   };
+}
+
+function productMetaDescription(product) {
+  const parts = [
+    product.category,
+    money.format(product.price || 0),
+    product.sizes?.length ? `Tamanhos: ${product.sizes.join(", ")}` : "",
+    product.colors?.length ? `Cores: ${product.colors.join(", ")}` : ""
+  ].filter(Boolean);
+
+  return cleanText(product.description || parts.join(" | "), 220);
+}
+
+function renderMetaPage(html, meta) {
+  const title = escapeHtml(meta.title);
+  const description = escapeHtml(meta.description);
+  const url = escapeHtml(meta.url);
+  const image = escapeHtml(meta.image);
+  const siteName = escapeHtml(meta.siteName);
+  const tags = [
+    `<meta property="og:type" content="product" />`,
+    `<meta property="og:site_name" content="${siteName}" />`,
+    `<meta property="og:title" content="${title}" />`,
+    `<meta property="og:description" content="${description}" />`,
+    `<meta property="og:url" content="${url}" />`,
+    `<meta property="og:image" content="${image}" />`,
+    `<meta property="og:image:secure_url" content="${image}" />`,
+    `<meta name="twitter:card" content="summary_large_image" />`,
+    `<meta name="twitter:title" content="${title}" />`,
+    `<meta name="twitter:description" content="${description}" />`,
+    `<meta name="twitter:image" content="${image}" />`
+  ].join("\n    ");
+
+  return html
+    .replace(/<title>.*?<\/title>/, `<title>${title}</title>`)
+    .replace(
+      /<meta\s+name="description"[\s\S]*?\/>/,
+      `<meta name="description" content="${description}" />`
+    )
+    .replace("</head>", `    ${tags}\n  </head>`);
+}
+
+async function renderProductPage(request, product, settings) {
+  const html = await fs.readFile(path.join(publicDir, "index.html"), "utf8");
+  const image = productImages(product)[0] || settings.heroImage || defaultSettings.heroImage;
+  const title = `${product.name} | ${settings.storeName}`;
+  const description = productMetaDescription(product) || settings.tagline;
+
+  return renderMetaPage(html, {
+    title,
+    description,
+    siteName: settings.storeName,
+    image: absoluteUrl(request, image),
+    url: absoluteUrl(request, `/produto/${encodeURIComponent(product.id)}`)
+  });
 }
 
 function signPayload(payload) {
@@ -468,8 +562,23 @@ app.get("/admin", (_request, response) => {
   response.sendFile(path.join(publicDir, "admin.html"));
 });
 
-app.get("/produto/:id", (_request, response) => {
-  response.sendFile(path.join(publicDir, "index.html"));
+app.get("/produto/:id", async (request, response, next) => {
+  try {
+    const [settings, products] = await Promise.all([
+      readJson(settingsFile, defaultSettings),
+      readJson(productsFile, [])
+    ]);
+    const product = products.find((item) => item.id === request.params.id && item.active);
+
+    if (!product) {
+      response.status(404).sendFile(path.join(publicDir, "index.html"));
+      return;
+    }
+
+    response.send(await renderProductPage(request, product, settings));
+  } catch (error) {
+    next(error);
+  }
 });
 
 app.use((error, _request, response, _next) => {
