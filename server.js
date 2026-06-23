@@ -19,6 +19,7 @@ const tokenSecret =
   process.env.ADMIN_TOKEN_SECRET || "catalogo-local-dev-secret-change-before-publishing";
 
 app.set("trust proxy", true);
+app.disable("x-powered-by");
 
 const publicDir = path.join(__dirname, "public");
 const storageDir = process.env.STORAGE_DIR ? path.resolve(process.env.STORAGE_DIR) : null;
@@ -34,6 +35,11 @@ const uploadsDir = path.resolve(
 const settingsFile = path.join(dataDir, "settings.json");
 const productsFile = path.join(dataDir, "products.json");
 const authCookie = "catalog_admin";
+const adminSessionDurationMs = 1000 * 60 * 60 * 12;
+const loginWindowMs = 1000 * 60 * 15;
+const loginLockMs = 1000 * 60 * 15;
+const maxLoginAttempts = 5;
+const loginAttempts = new Map();
 
 const defaultSettings = {
   storeName: "Primewear Imports",
@@ -357,6 +363,90 @@ function passwordMatches(password) {
   return crypto.timingSafeEqual(input, expected);
 }
 
+function adminCookieOptions(maxAge = adminSessionDurationMs) {
+  return {
+    httpOnly: true,
+    sameSite: "strict",
+    secure: process.env.NODE_ENV === "production",
+    maxAge
+  };
+}
+
+function clearAdminCookieOptions() {
+  const { maxAge: _maxAge, ...options } = adminCookieOptions();
+  return options;
+}
+
+function clientAddress(request) {
+  const forwardedFor = request.get("x-forwarded-for")?.split(",")[0]?.trim();
+  return (forwardedFor || request.ip || request.socket.remoteAddress || "unknown").slice(0, 80);
+}
+
+function loginLockStatus(request) {
+  const key = clientAddress(request);
+  const entry = loginAttempts.get(key);
+
+  if (!entry) {
+    return { locked: false, key };
+  }
+
+  if (entry.lockedUntil && entry.lockedUntil > Date.now()) {
+    return {
+      locked: true,
+      key,
+      retryAfterSeconds: Math.ceil((entry.lockedUntil - Date.now()) / 1000)
+    };
+  }
+
+  if (entry.lockedUntil || Date.now() - entry.firstAttemptAt > loginWindowMs) {
+    loginAttempts.delete(key);
+  }
+
+  return { locked: false, key };
+}
+
+function registerFailedLogin(request) {
+  const key = clientAddress(request);
+  const now = Date.now();
+  const previous = loginAttempts.get(key);
+  const entry =
+    previous && now - previous.firstAttemptAt <= loginWindowMs
+      ? previous
+      : { attempts: 0, firstAttemptAt: now, lockedUntil: 0 };
+
+  entry.attempts += 1;
+
+  if (entry.attempts >= maxLoginAttempts) {
+    entry.lockedUntil = now + loginLockMs;
+  }
+
+  loginAttempts.set(key, entry);
+  return entry;
+}
+
+function registerSuccessfulLogin(request) {
+  loginAttempts.delete(clientAddress(request));
+}
+
+function securityHeaders(request, response, next) {
+  response.setHeader("X-Content-Type-Options", "nosniff");
+  response.setHeader("X-Frame-Options", "DENY");
+  response.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  response.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+
+  if (
+    request.path === "/admin" ||
+    request.path.startsWith("/api/auth") ||
+    request.path.startsWith("/api/admin")
+  ) {
+    response.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
+    response.setHeader("Pragma", "no-cache");
+    response.setHeader("Expires", "0");
+  }
+
+  next();
+}
+
 function requireAdmin(request, response, next) {
   if (verifySessionToken(request.cookies[authCookie])) {
     next();
@@ -407,6 +497,10 @@ await ensureStorage();
 
 app.use(express.json({ limit: "1mb" }));
 app.use(cookieParser());
+app.use(securityHeaders);
+app.get("/admin.html", (_request, response) => {
+  response.status(404).send("Not found");
+});
 app.use("/uploads", express.static(uploadsDir));
 app.use(express.static(publicDir));
 
@@ -432,22 +526,38 @@ app.get("/api/products", async (_request, response, next) => {
 });
 
 app.post("/api/auth/login", async (request, response) => {
+  const lockStatus = loginLockStatus(request);
+
+  if (lockStatus.locked) {
+    response.setHeader("Retry-After", String(lockStatus.retryAfterSeconds));
+    response.status(429).json({
+      error: "Muitas tentativas incorretas. Aguarde alguns minutos e tente novamente."
+    });
+    return;
+  }
+
   if (!passwordMatches(request.body.password)) {
+    const entry = registerFailedLogin(request);
+
+    if (entry.lockedUntil && entry.lockedUntil > Date.now()) {
+      response.setHeader("Retry-After", String(Math.ceil((entry.lockedUntil - Date.now()) / 1000)));
+      response.status(429).json({
+        error: "Muitas tentativas incorretas. Aguarde alguns minutos e tente novamente."
+      });
+      return;
+    }
+
     response.status(401).json({ error: "Senha incorreta." });
     return;
   }
 
-  response.cookie(authCookie, createSessionToken(), {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    maxAge: 1000 * 60 * 60 * 24 * 7
-  });
+  registerSuccessfulLogin(request);
+  response.cookie(authCookie, createSessionToken(), adminCookieOptions());
   response.json({ ok: true });
 });
 
 app.post("/api/auth/logout", (_request, response) => {
-  response.clearCookie(authCookie);
+  response.clearCookie(authCookie, clearAdminCookieOptions());
   response.json({ ok: true });
 });
 
