@@ -12,6 +12,7 @@ const state = {
   cart: loadCart(),
   carouselIndexes: {},
   selectedColors: {},
+  selectedSizes: {},
   dialogProductId: null,
   dialogImageIndex: 0,
   filters: {
@@ -124,6 +125,8 @@ function loadCart() {
     return value
       .map((item) => ({
         id: String(item.id || ""),
+        size: String(item.size || ""),
+        color: String(item.color || ""),
         quantity: Math.min(Math.max(Number(item.quantity) || 1, 1), maxCartQuantity)
       }))
       .filter((item) => item.id);
@@ -312,6 +315,14 @@ function bindEvents() {
       return;
     }
 
+    const sizeButton = event.target.closest("[data-product-size]");
+
+    if (sizeButton) {
+      event.preventDefault();
+      selectProductSize(sizeButton.dataset.productId, sizeButton.dataset.productSize);
+      return;
+    }
+
     const cartButton = event.target.closest("[data-add-cart]");
 
     if (cartButton) {
@@ -345,6 +356,29 @@ function bindEvents() {
   });
 
   elements.dialogBody.addEventListener("click", (event) => {
+    const colorButton = event.target.closest("[data-product-color]");
+
+    if (colorButton) {
+      event.preventDefault();
+      selectProductColor(colorButton.dataset.productId, colorButton.dataset.productColor);
+      return;
+    }
+
+    const sizeButton = event.target.closest("[data-product-size]");
+
+    if (sizeButton) {
+      event.preventDefault();
+      selectProductSize(sizeButton.dataset.productId, sizeButton.dataset.productSize);
+      return;
+    }
+
+    const whatsappButton = event.target.closest("[data-product-whatsapp]");
+
+    if (whatsappButton && !canSendProductWhatsapp(whatsappButton.dataset.productWhatsapp)) {
+      event.preventDefault();
+      return;
+    }
+
     const cartButton = event.target.closest("[data-add-cart]");
 
     if (cartButton) {
@@ -375,6 +409,21 @@ function bindEvents() {
     if (colorButton) {
       event.preventDefault();
       selectProductColor(colorButton.dataset.productId, colorButton.dataset.productColor);
+      return;
+    }
+
+    const sizeButton = event.target.closest("[data-product-size]");
+
+    if (sizeButton) {
+      event.preventDefault();
+      selectProductSize(sizeButton.dataset.productId, sizeButton.dataset.productSize);
+      return;
+    }
+
+    const whatsappButton = event.target.closest("[data-product-whatsapp]");
+
+    if (whatsappButton && !canSendProductWhatsapp(whatsappButton.dataset.productWhatsapp)) {
+      event.preventDefault();
       return;
     }
 
@@ -967,13 +1016,14 @@ function createProductCard(product) {
   const article = document.createElement("article");
   article.className = "product-card";
   const selectedColor = selectedProductColor(product);
+  const selectedSize = selectedProductSize(product);
   const images = productImages(product, selectedColor);
   const imageIndex = Math.min(state.carouselIndexes[product.id] || 0, Math.max(images.length - 1, 0));
   const currentImage = images[imageIndex];
 
   article.innerHTML = `
     <div class="product-photo">
-      <a class="product-photo-link" href="${escapeAttr(productLink(product, selectedColor))}" aria-label="Ver detalhes de ${escapeAttr(product.name)}">
+      <a class="product-photo-link" href="${escapeAttr(productLink(product, selectedColor, selectedSize))}" aria-label="Ver detalhes de ${escapeAttr(product.name)}">
         ${currentImage ? `<img src="${escapeAttr(currentImage)}" alt="${escapeAttr(product.name)}" loading="lazy" />` : `<span>Sem foto</span>`}
         ${product.featured ? `<strong>Destaque</strong>` : ""}
         <em class="delivery-badge">${escapeHtml(deliveryLabel(productDeliveryType(product)))}</em>
@@ -985,10 +1035,11 @@ function createProductCard(product) {
       <h3>${escapeHtml(product.name)}</h3>
       <p class="product-price">${money.format(product.price || 0)}</p>
       ${renderColorOptions(product, selectedColor)}
-      <div class="chip-row">${renderChips([deliveryLabel(productDeliveryType(product)), product.category, ...(product.sizes || []), ...(product.colors || [])])}</div>
+      ${renderSizeOptions(product, selectedSize)}
+      <div class="chip-row">${renderChips([deliveryLabel(productDeliveryType(product)), product.category, ...(product.colors || [])])}</div>
       <div class="product-actions">
-        <button class="button button-primary" type="button" data-add-cart="${escapeAttr(product.id)}">${escapeHtml(cartButtonLabel(product.id))}</button>
-        <a class="button button-quiet" href="${escapeAttr(productLink(product, selectedColor))}">Detalhes</a>
+        <button class="button button-primary" type="button" data-add-cart="${escapeAttr(product.id)}">${escapeHtml(productCartButtonLabel(product, selectedSize, selectedColor))}</button>
+        <a class="button button-quiet" href="${escapeAttr(productLink(product, selectedColor, selectedSize))}">Detalhes</a>
       </div>
     </div>
   `;
@@ -1066,13 +1117,52 @@ function renderColorOptions(product, selectedColor = selectedProductColor(produc
   `;
 }
 
+function renderSizeOptions(product, selectedSize = selectedProductSize(product)) {
+  const sizes = productSizes(product);
+
+  if (!sizes.length) {
+    return "";
+  }
+
+  return `
+    <div class="size-options" aria-label="Tamanhos disponiveis">
+      ${sizes
+        .map((size) => {
+          const active = normalizeForFilter(size) === normalizeForFilter(selectedSize);
+
+          return `
+            <button
+              class="size-option ${active ? "is-active" : ""}"
+              type="button"
+              data-product-id="${escapeAttr(product.id)}"
+              data-product-size="${escapeAttr(size)}"
+              aria-pressed="${active}"
+            >
+              ${escapeHtml(size)}
+            </button>
+          `;
+        })
+        .join("")}
+    </div>
+  `;
+}
+
 function productColors(product = {}) {
   return uniqueNormalized([...(product.colors || []), ...Object.values(product.imageColors || {})]);
+}
+
+function productSizes(product = {}) {
+  return product.sizes || [];
 }
 
 function selectedProductColor(product = {}) {
   const selected = state.selectedColors[product.id] || "";
   return productColors(product).some((color) => normalizeForFilter(color) === normalizeForFilter(selected)) ? selected : "";
+}
+
+function selectedProductSize(product = {}) {
+  const selected = state.selectedSizes[product.id] || "";
+  return productSizes(product).some((size) => normalizeForFilter(size) === normalizeForFilter(selected)) ? selected : "";
 }
 
 function selectProductColor(productId, color) {
@@ -1086,12 +1176,62 @@ function selectProductColor(productId, color) {
   state.selectedColors[productId] = normalizeForFilter(current) === normalizeForFilter(color) ? "" : color;
   state.carouselIndexes[productId] = 0;
 
-  if (location.pathname === `/produto/${encodeURIComponent(product.id)}`) {
-    history.replaceState({}, "", productLink(product, state.selectedColors[productId]));
-  }
+  syncProductRoute(product);
 
   renderProducts();
   renderCurrentRoute();
+}
+
+function selectProductSize(productId, size) {
+  const product = state.products.find((item) => item.id === productId);
+
+  if (!product) {
+    return;
+  }
+
+  const current = selectedProductSize(product);
+  state.selectedSizes[productId] = normalizeForFilter(current) === normalizeForFilter(size) ? "" : size;
+
+  syncProductRoute(product);
+  renderProducts();
+  renderCurrentRoute();
+}
+
+function syncProductRoute(product) {
+  if (location.pathname === `/produto/${encodeURIComponent(product.id)}`) {
+    history.replaceState({}, "", productLink(product, selectedProductColor(product), selectedProductSize(product)));
+  }
+}
+
+function productSelection(product) {
+  return {
+    color: selectedProductColor(product),
+    size: selectedProductSize(product)
+  };
+}
+
+function productNeedsSize(product) {
+  return productSizes(product).length > 0;
+}
+
+function canSendProductWhatsapp(productId) {
+  const product = state.products.find((item) => item.id === productId);
+
+  if (!product) {
+    return false;
+  }
+
+  if (productNeedsSize(product) && !selectedProductSize(product)) {
+    alert("Escolha um tamanho antes de enviar pelo WhatsApp.");
+    return false;
+  }
+
+  if (!state.settings?.whatsapp) {
+    alert("Cadastre o WhatsApp da loja no painel administrativo.");
+    return false;
+  }
+
+  return true;
 }
 
 function colorSwatch(color) {
@@ -1134,20 +1274,28 @@ function addToCart(productId) {
     return;
   }
 
-  const item = state.cart.find((cartItem) => cartItem.id === productId);
+  const selection = productSelection(product);
+
+  if (productNeedsSize(product) && !selection.size) {
+    alert("Escolha um tamanho antes de adicionar ao carrinho.");
+    return;
+  }
+
+  const key = cartLineKey({ id: productId, ...selection });
+  const item = state.cart.find((cartItem) => cartLineKey(cartItem) === key);
 
   if (item) {
     item.quantity = Math.min(item.quantity + 1, maxCartQuantity);
   } else {
-    state.cart.push({ id: productId, quantity: 1 });
+    state.cart.push({ id: productId, quantity: 1, size: selection.size, color: selection.color });
   }
 
   saveCart();
   refreshCartViews();
 }
 
-function updateCartQuantity(productId, delta) {
-  const item = state.cart.find((cartItem) => cartItem.id === productId);
+function updateCartQuantity(cartKey, delta) {
+  const item = state.cart.find((cartItem) => cartLineKey(cartItem) === cartKey);
 
   if (!item) {
     return;
@@ -1156,7 +1304,7 @@ function updateCartQuantity(productId, delta) {
   item.quantity += delta;
 
   if (item.quantity <= 0) {
-    removeCartItem(productId);
+    removeCartItem(cartKey);
     return;
   }
 
@@ -1165,8 +1313,8 @@ function updateCartQuantity(productId, delta) {
   refreshCartViews();
 }
 
-function removeCartItem(productId) {
-  state.cart = state.cart.filter((item) => item.id !== productId);
+function removeCartItem(cartKey) {
+  state.cart = state.cart.filter((item) => cartLineKey(item) !== cartKey);
   saveCart();
   refreshCartViews();
 }
@@ -1205,19 +1353,39 @@ function activeCartItems() {
 
       return {
         product,
+        key: cartLineKey(item),
+        size: item.size || "",
+        color: item.color || "",
         quantity: Math.min(Math.max(Number(item.quantity) || 1, 1), maxCartQuantity)
       };
     })
     .filter(Boolean);
 }
 
-function cartQuantity(productId) {
-  return state.cart.find((item) => item.id === productId)?.quantity || 0;
+function cartLineKey(item = {}) {
+  return [
+    item.id || "",
+    normalizeForFilter(item.size || ""),
+    normalizeForFilter(item.color || "")
+  ].join("::");
 }
 
-function cartButtonLabel(productId) {
-  const quantity = cartQuantity(productId);
+function cartQuantity(productId, size = "", color = "") {
+  const key = cartLineKey({ id: productId, size, color });
+  return state.cart.find((item) => cartLineKey(item) === key)?.quantity || 0;
+}
+
+function cartButtonLabel(productId, size = "", color = "") {
+  const quantity = cartQuantity(productId, size, color);
   return quantity ? `Adicionar mais (${quantity})` : "Adicionar ao carrinho";
+}
+
+function productCartButtonLabel(product, size = "", color = "") {
+  if (productNeedsSize(product) && !size) {
+    return "Escolha o tamanho";
+  }
+
+  return cartButtonLabel(product.id, size, color);
 }
 
 function cartItemsCount() {
@@ -1245,8 +1413,12 @@ function renderCart() {
   elements.cartWhatsappLink.setAttribute("aria-disabled", String(!whatsappUrl));
 }
 
-function renderCartItem({ product, quantity }) {
-  const image = productImages(product)[0];
+function renderCartItem({ product, quantity, size, color, key }) {
+  const image = productImages(product, color)[0];
+  const details = [
+    size ? `Tamanho: ${size}` : productNeedsSize(product) ? "Tamanho: consultar" : "",
+    color ? `Cor: ${color}` : ""
+  ].filter(Boolean);
 
   return `
     <article class="cart-item">
@@ -1258,14 +1430,15 @@ function renderCartItem({ product, quantity }) {
         <h3>${escapeHtml(product.name)}</h3>
         <p>${money.format(product.price || 0)} cada</p>
         <small>${escapeHtml(deliveryLabel(productDeliveryType(product)))}</small>
+        ${details.length ? `<div class="cart-item-options">${details.map((item) => `<span>${escapeHtml(item)}</span>`).join("")}</div>` : ""}
       </div>
       <div class="cart-item-controls">
         <div class="cart-quantity" aria-label="Quantidade">
-          <button type="button" data-cart-decrease="${escapeAttr(product.id)}" aria-label="Diminuir quantidade">−</button>
+          <button type="button" data-cart-decrease="${escapeAttr(key)}" aria-label="Diminuir quantidade">−</button>
           <span>${quantity}</span>
-          <button type="button" data-cart-increase="${escapeAttr(product.id)}" aria-label="Aumentar quantidade">+</button>
+          <button type="button" data-cart-increase="${escapeAttr(key)}" aria-label="Aumentar quantidade">+</button>
         </div>
-        <button class="cart-remove" type="button" data-cart-remove="${escapeAttr(product.id)}">Remover</button>
+        <button class="cart-remove" type="button" data-cart-remove="${escapeAttr(key)}">Remover</button>
       </div>
     </article>
   `;
@@ -1302,13 +1475,15 @@ function cartMessage(items = activeCartItems(), total = cartTotal(items)) {
     ""
   ];
 
-  items.forEach(({ product, quantity }, index) => {
+  items.forEach(({ product, quantity, size, color }, index) => {
     lines.push(
       `${index + 1}. ${quantity}x ${product.name}`,
       `Valor: ${money.format(product.price || 0)} cada`,
       `Categoria: ${productSubtitle(product) || "Geral"}`,
+      ...(size ? [`Tamanho: ${size}`] : productNeedsSize(product) ? ["Tamanho: consultar"] : []),
+      ...(color ? [`Cor: ${color}`] : []),
       `Envio: ${deliveryLabel(productDeliveryType(product))}`,
-      `Link: ${productLink(product)}`,
+      `Link: ${productLink(product, color, size)}`,
       ""
     );
   });
@@ -1349,10 +1524,16 @@ function renderCurrentRoute() {
     return;
   }
 
-  const routeColor = new URLSearchParams(location.search).get("cor");
+  const routeParams = new URLSearchParams(location.search);
+  const routeColor = routeParams.get("cor");
+  const routeSize = routeParams.get("tamanho");
 
   if (routeColor && !state.selectedColors[product.id]) {
     state.selectedColors[product.id] = routeColor;
+  }
+
+  if (routeSize && !state.selectedSizes[product.id]) {
+    state.selectedSizes[product.id] = routeSize;
   }
 
   elements.storeHome.hidden = true;
@@ -1370,9 +1551,11 @@ function openProduct(productId) {
 
 function renderProductPage(product) {
   const selectedColor = selectedProductColor(product);
+  const selectedSize = selectedProductSize(product);
   const images = productImages(product, selectedColor);
   const imageIndex = Math.min(state.carouselIndexes[product.id] || 0, Math.max(images.length - 1, 0));
   const currentImage = images[imageIndex];
+  const whatsappUrl = productNeedsSize(product) && !selectedSize ? "" : buildWhatsappUrl(productMessage(product, { color: selectedColor, size: selectedSize }));
   document.title = `${product.name} | ${state.settings?.storeName || "Primewear Imports"}`;
 
   elements.productPage.innerHTML = `
@@ -1399,11 +1582,11 @@ function renderProductPage(product) {
         </div>
         <div class="info-group">
           <strong>Tamanhos</strong>
-          <div class="chip-row">${renderChips(product.sizes || []) || "<span>Consultar</span>"}</div>
+          ${renderSizeOptions(product, selectedSize) || "<div class=\"chip-row\"><span>Consultar</span></div>"}
         </div>
         <div class="dialog-actions">
-          <button class="button button-primary" type="button" data-add-cart="${escapeAttr(product.id)}">${escapeHtml(cartButtonLabel(product.id))}</button>
-          <a class="button button-quiet" href="${buildWhatsappUrl(productMessage(product))}">Pedir agora</a>
+          <button class="button button-primary" type="button" data-add-cart="${escapeAttr(product.id)}">${escapeHtml(productCartButtonLabel(product, selectedSize, selectedColor))}</button>
+          <a class="button button-quiet ${whatsappUrl ? "" : "is-disabled"}" href="${whatsappUrl || "#"}" aria-disabled="${String(!whatsappUrl)}" data-product-whatsapp="${escapeAttr(product.id)}">Pedir agora</a>
         </div>
       </div>
     </div>
@@ -1441,9 +1624,12 @@ function moveProductPageCarousel(productId, action) {
 }
 
 function renderProductDialog(product) {
-  const images = productImages(product);
+  const selectedColor = selectedProductColor(product);
+  const selectedSize = selectedProductSize(product);
+  const images = productImages(product, selectedColor);
   const imageIndex = Math.min(state.dialogImageIndex, Math.max(images.length - 1, 0));
   const currentImage = images[imageIndex];
+  const whatsappUrl = productNeedsSize(product) && !selectedSize ? "" : buildWhatsappUrl(productMessage(product, { color: selectedColor, size: selectedSize }));
 
   elements.dialogBody.innerHTML = `
     <div class="dialog-photo">
@@ -1469,22 +1655,22 @@ function renderProductDialog(product) {
       </div>
       <div class="info-group">
         <strong>Tamanhos</strong>
-        <div class="chip-row">${renderChips(product.sizes || []) || "<span>Consultar</span>"}</div>
+        ${renderSizeOptions(product, selectedSize) || "<div class=\"chip-row\"><span>Consultar</span></div>"}
       </div>
       <div class="info-group">
         <strong>Cores</strong>
-        <div class="chip-row">${renderChips(product.colors || []) || "<span>Consultar</span>"}</div>
+        ${renderColorOptions(product, selectedColor) || "<div class=\"chip-row\"><span>Consultar</span></div>"}
       </div>
       <div class="dialog-actions">
-        <button class="button button-primary" type="button" data-add-cart="${escapeAttr(product.id)}">${escapeHtml(cartButtonLabel(product.id))}</button>
-        <a class="button button-quiet" href="${buildWhatsappUrl(productMessage(product))}">Pedir agora</a>
+        <button class="button button-primary" type="button" data-add-cart="${escapeAttr(product.id)}">${escapeHtml(productCartButtonLabel(product, selectedSize, selectedColor))}</button>
+        <a class="button button-quiet ${whatsappUrl ? "" : "is-disabled"}" href="${whatsappUrl || "#"}" aria-disabled="${String(!whatsappUrl)}" data-product-whatsapp="${escapeAttr(product.id)}">Pedir agora</a>
         <button class="button button-quiet" id="copyProductLink" type="button">Copiar link</button>
       </div>
     </div>
   `;
 
   document.querySelector("#copyProductLink").addEventListener("click", async () => {
-    await navigator.clipboard.writeText(productLink(product));
+    await navigator.clipboard.writeText(productLink(product, selectedColor, selectedSize));
     document.querySelector("#copyProductLink").textContent = "Link copiado";
   });
 }
@@ -1507,7 +1693,7 @@ function renderDialogCarouselControls(images, imageIndex) {
 
 function moveDialogCarousel(action) {
   const product = state.products.find((item) => item.id === state.dialogProductId);
-  const images = productImages(product);
+  const images = productImages(product, selectedProductColor(product));
 
   if (!product || images.length < 2) {
     return;
@@ -1529,15 +1715,39 @@ function closeProductDialog() {
   }
 }
 
-function productMessage(product) {
-  return `Olá! Tenho interesse na peça ${product.name} (${money.format(product.price || 0)}).\nEnvio: ${deliveryLabel(productDeliveryType(product))}.\n\nFoto e detalhes: ${productLink(product)}`;
+function productMessage(product, selection = productSelection(product)) {
+  const lines = [
+    `Olá! Tenho interesse na peça ${product.name} (${money.format(product.price || 0)}).`
+  ];
+
+  if (selection.size) {
+    lines.push(`Tamanho: ${selection.size}.`);
+  } else if (productNeedsSize(product)) {
+    lines.push("Tamanho: consultar.");
+  }
+
+  if (selection.color) {
+    lines.push(`Cor: ${selection.color}.`);
+  }
+
+  lines.push(
+    `Envio: ${deliveryLabel(productDeliveryType(product))}.`,
+    "",
+    `Foto e detalhes: ${productLink(product, selection.color, selection.size)}`
+  );
+
+  return lines.join("\n");
 }
 
-function productLink(product, color = "") {
+function productLink(product, color = "", size = "") {
   const url = new URL(`/produto/${encodeURIComponent(product.id)}`, location.origin);
 
   if (color) {
     url.searchParams.set("cor", color);
+  }
+
+  if (size) {
+    url.searchParams.set("tamanho", size);
   }
 
   return url.toString();
