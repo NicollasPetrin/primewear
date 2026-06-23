@@ -11,6 +11,7 @@ const state = {
   products: [],
   cart: loadCart(),
   carouselIndexes: {},
+  selectedColors: {},
   dialogProductId: null,
   dialogImageIndex: 0,
   filters: {
@@ -40,6 +41,8 @@ const elements = {
   empty: document.querySelector("#emptyState"),
   count: document.querySelector("#catalogCount"),
   filtersForm: document.querySelector("#catalogFilters"),
+  storeHome: document.querySelector("#storeHome"),
+  productPage: document.querySelector("#productPage"),
   brandWall: document.querySelector("#marcas"),
   brandWallGrid: document.querySelector("#brandWallGrid"),
   menuToggle: document.querySelector("#menuToggle"),
@@ -92,7 +95,7 @@ async function init() {
     bindEvents();
     renderProducts();
     renderCart();
-    openProductFromPath();
+    renderCurrentRoute();
   } catch (error) {
     elements.count.textContent = "Não foi possível carregar o catálogo.";
     console.error(error);
@@ -301,6 +304,14 @@ function bindEvents() {
       return;
     }
 
+    const colorButton = event.target.closest("[data-product-color]");
+
+    if (colorButton) {
+      event.preventDefault();
+      selectProductColor(colorButton.dataset.productId, colorButton.dataset.productColor);
+      return;
+    }
+
     const cartButton = event.target.closest("[data-add-cart]");
 
     if (cartButton) {
@@ -347,6 +358,31 @@ function bindEvents() {
     if (button) {
       event.preventDefault();
       moveDialogCarousel(button.dataset.dialogCarousel);
+    }
+  });
+
+  elements.productPage.addEventListener("click", (event) => {
+    const carouselButton = event.target.closest("[data-product-page-carousel]");
+
+    if (carouselButton) {
+      event.preventDefault();
+      moveProductPageCarousel(carouselButton.dataset.productId, carouselButton.dataset.productPageCarousel);
+      return;
+    }
+
+    const colorButton = event.target.closest("[data-product-color]");
+
+    if (colorButton) {
+      event.preventDefault();
+      selectProductColor(colorButton.dataset.productId, colorButton.dataset.productColor);
+      return;
+    }
+
+    const cartButton = event.target.closest("[data-add-cart]");
+
+    if (cartButton) {
+      event.preventDefault();
+      addToCart(cartButton.dataset.addCart);
     }
   });
 
@@ -397,14 +433,7 @@ function bindEvents() {
   });
 
   window.addEventListener("popstate", () => {
-    if (location.pathname.startsWith("/produto/")) {
-      openProductFromPath(false);
-      return;
-    }
-
-    if (elements.dialog.open) {
-      elements.dialog.close();
-    }
+    renderCurrentRoute();
   });
 }
 
@@ -568,7 +597,7 @@ function buildFilters(products) {
   fillSelect(elements.category, catalogCategories(products), "Todas");
   fillSelect(elements.brand, unique(products.map((product) => product.brand)), "Todas");
   fillSelect(elements.size, catalogSizes(products), "Todos");
-  fillSelect(elements.color, unique(products.flatMap((product) => product.colors || [])), "Todas");
+  fillSelect(elements.color, unique(products.flatMap((product) => productColors(product))), "Todas");
   renderNavMenus(products);
   renderBrandWall(products);
 }
@@ -922,7 +951,7 @@ function filteredProducts() {
         (!category || normalizeForFilter(product.category) === normalizeForFilter(category)) &&
         (!brand || product.brand === brand) &&
         (!size || (product.sizes || []).includes(size)) &&
-        (!color || (product.colors || []).includes(color))
+        (!color || productColors(product).some((productColor) => normalizeForFilter(productColor) === normalizeForFilter(color)))
       );
     })
     .sort((a, b) => {
@@ -937,25 +966,29 @@ function filteredProducts() {
 function createProductCard(product) {
   const article = document.createElement("article");
   article.className = "product-card";
-  const images = productImages(product);
+  const selectedColor = selectedProductColor(product);
+  const images = productImages(product, selectedColor);
   const imageIndex = Math.min(state.carouselIndexes[product.id] || 0, Math.max(images.length - 1, 0));
   const currentImage = images[imageIndex];
 
   article.innerHTML = `
-    <div class="product-photo" role="button" tabindex="0" data-open-product="${escapeAttr(product.id)}">
-      ${currentImage ? `<img src="${escapeAttr(currentImage)}" alt="${escapeAttr(product.name)}" loading="lazy" />` : `<span>Sem foto</span>`}
-      ${product.featured ? `<strong>Destaque</strong>` : ""}
-      <em class="delivery-badge">${escapeHtml(deliveryLabel(productDeliveryType(product)))}</em>
+    <div class="product-photo">
+      <a class="product-photo-link" href="${escapeAttr(productLink(product, selectedColor))}" aria-label="Ver detalhes de ${escapeAttr(product.name)}">
+        ${currentImage ? `<img src="${escapeAttr(currentImage)}" alt="${escapeAttr(product.name)}" loading="lazy" />` : `<span>Sem foto</span>`}
+        ${product.featured ? `<strong>Destaque</strong>` : ""}
+        <em class="delivery-badge">${escapeHtml(deliveryLabel(productDeliveryType(product)))}</em>
+      </a>
       ${renderCarouselControls(product.id, images, imageIndex)}
     </div>
     <div class="product-content">
       <p class="product-category">${escapeHtml(productSubtitle(product))}</p>
       <h3>${escapeHtml(product.name)}</h3>
       <p class="product-price">${money.format(product.price || 0)}</p>
+      ${renderColorOptions(product, selectedColor)}
       <div class="chip-row">${renderChips([deliveryLabel(productDeliveryType(product)), product.category, ...(product.sizes || []), ...(product.colors || [])])}</div>
       <div class="product-actions">
         <button class="button button-primary" type="button" data-add-cart="${escapeAttr(product.id)}">${escapeHtml(cartButtonLabel(product.id))}</button>
-        <button class="button button-quiet" type="button" data-open-product="${escapeAttr(product.id)}">Detalhes</button>
+        <a class="button button-quiet" href="${escapeAttr(productLink(product, selectedColor))}">Detalhes</a>
       </div>
     </div>
   `;
@@ -981,7 +1014,7 @@ function renderCarouselControls(productId, images, imageIndex) {
 
 function moveCardCarousel(productId, action) {
   const product = state.products.find((item) => item.id === productId);
-  const images = productImages(product);
+  const images = productImages(product, selectedProductColor(product));
 
   if (images.length < 2) {
     return;
@@ -999,6 +1032,99 @@ function renderChips(items) {
     .slice(0, 6)
     .map((item) => `<span>${escapeHtml(item)}</span>`)
     .join("");
+}
+
+function renderColorOptions(product, selectedColor = selectedProductColor(product)) {
+  const colors = productColors(product);
+
+  if (!colors.length) {
+    return "";
+  }
+
+  return `
+    <div class="color-options" aria-label="Cores disponiveis">
+      ${colors
+        .map((color) => {
+          const active = normalizeForFilter(color) === normalizeForFilter(selectedColor);
+
+          return `
+            <button
+              class="color-option ${active ? "is-active" : ""}"
+              type="button"
+              style="--swatch: ${escapeAttr(colorSwatch(color))}"
+              data-product-id="${escapeAttr(product.id)}"
+              data-product-color="${escapeAttr(color)}"
+              aria-pressed="${active}"
+            >
+              <span></span>
+              ${escapeHtml(color)}
+            </button>
+          `;
+        })
+        .join("")}
+    </div>
+  `;
+}
+
+function productColors(product = {}) {
+  return uniqueNormalized([...(product.colors || []), ...Object.values(product.imageColors || {})]);
+}
+
+function selectedProductColor(product = {}) {
+  const selected = state.selectedColors[product.id] || "";
+  return productColors(product).some((color) => normalizeForFilter(color) === normalizeForFilter(selected)) ? selected : "";
+}
+
+function selectProductColor(productId, color) {
+  const product = state.products.find((item) => item.id === productId);
+
+  if (!product) {
+    return;
+  }
+
+  const current = selectedProductColor(product);
+  state.selectedColors[productId] = normalizeForFilter(current) === normalizeForFilter(color) ? "" : color;
+  state.carouselIndexes[productId] = 0;
+
+  if (location.pathname === `/produto/${encodeURIComponent(product.id)}`) {
+    history.replaceState({}, "", productLink(product, state.selectedColors[productId]));
+  }
+
+  renderProducts();
+  renderCurrentRoute();
+}
+
+function colorSwatch(color) {
+  const key = normalizeForFilter(color);
+  const swatches = {
+    preto: "#050505",
+    black: "#050505",
+    branco: "#ffffff",
+    white: "#ffffff",
+    "off-white": "#f2eadb",
+    offwhite: "#f2eadb",
+    cinza: "#9aa1a9",
+    grey: "#9aa1a9",
+    gray: "#9aa1a9",
+    azul: "#2459a8",
+    blue: "#2459a8",
+    verde: "#2f7d4f",
+    green: "#2f7d4f",
+    vermelho: "#bd2236",
+    red: "#bd2236",
+    rosa: "#e58aaa",
+    pink: "#e58aaa",
+    bege: "#d4b982",
+    beige: "#d4b982",
+    marrom: "#704a2a",
+    brown: "#704a2a",
+    dourado: "#b8893a",
+    gold: "#b8893a",
+    prata: "#b8bdc3",
+    silver: "#b8bdc3"
+  };
+
+  return swatches[key] || "#d4aa57";
 }
 
 function addToCart(productId) {
@@ -1065,6 +1191,7 @@ function refreshCartViews() {
   renderCart();
   renderProducts();
   renderOpenProductDialog();
+  renderCurrentRoute();
 }
 
 function activeCartItems() {
@@ -1194,35 +1321,123 @@ function productSubtitle(product) {
   return [product.brand, product.category || "Geral"].filter(Boolean).join(" • ");
 }
 
-function openProductFromPath(push = false) {
+function renderCurrentRoute() {
   const match = location.pathname.match(/^\/produto\/([^/]+)/);
 
   if (!match) {
+    elements.storeHome.hidden = false;
+    elements.productPage.hidden = true;
+    document.title = `Catálogo | ${state.settings?.storeName || "Primewear Imports"}`;
     return;
   }
 
-  openProduct(decodeURIComponent(match[1]), push);
-}
-
-function openProduct(productId, push = true) {
+  const productId = decodeURIComponent(match[1]);
   const product = state.products.find((item) => item.id === productId);
 
   if (!product) {
+    elements.storeHome.hidden = true;
+    elements.productPage.hidden = false;
+    document.title = `Peça não encontrada | ${state.settings?.storeName || "Primewear Imports"}`;
+    elements.productPage.innerHTML = `
+      <div class="product-page-empty">
+        <p class="eyebrow">Produto</p>
+        <h1>Peça não encontrada</h1>
+        <p>Essa peça pode ter saído do catálogo.</p>
+        <a class="button button-primary" href="/">Voltar para a loja</a>
+      </div>
+    `;
     return;
   }
 
-  state.dialogProductId = product.id;
-  state.dialogImageIndex = Math.min(
-    state.carouselIndexes[product.id] || 0,
-    Math.max(productImages(product).length - 1, 0)
-  );
-  renderProductDialog(product);
+  const routeColor = new URLSearchParams(location.search).get("cor");
 
-  if (push) {
-    history.pushState({}, "", `/produto/${product.id}`);
+  if (routeColor && !state.selectedColors[product.id]) {
+    state.selectedColors[product.id] = routeColor;
   }
 
-  elements.dialog.showModal();
+  elements.storeHome.hidden = true;
+  elements.productPage.hidden = false;
+  renderProductPage(product);
+}
+
+function openProduct(productId) {
+  const product = state.products.find((item) => item.id === productId);
+
+  if (product) {
+    location.href = productLink(product);
+  }
+}
+
+function renderProductPage(product) {
+  const selectedColor = selectedProductColor(product);
+  const images = productImages(product, selectedColor);
+  const imageIndex = Math.min(state.carouselIndexes[product.id] || 0, Math.max(images.length - 1, 0));
+  const currentImage = images[imageIndex];
+  document.title = `${product.name} | ${state.settings?.storeName || "Primewear Imports"}`;
+
+  elements.productPage.innerHTML = `
+    <div class="product-page-shell">
+      <a class="back-link" href="/">Voltar para a loja</a>
+      <div class="product-page-media">
+        <div class="product-page-photo">
+          ${currentImage ? `<img src="${escapeAttr(currentImage)}" alt="${escapeAttr(product.name)}" />` : "<span>Sem foto</span>"}
+          ${renderProductPageCarouselControls(product.id, images, imageIndex)}
+        </div>
+      </div>
+      <div class="product-page-info">
+        <p class="product-category">${escapeHtml(productSubtitle(product))}</p>
+        <h1>${escapeHtml(product.name)}</h1>
+        <p class="product-price">${money.format(product.price || 0)}</p>
+        ${product.description ? `<p class="product-description">${escapeHtml(product.description)}</p>` : ""}
+        <div class="info-group">
+          <strong>Envio</strong>
+          <div class="chip-row"><span>${escapeHtml(deliveryLabel(productDeliveryType(product)))}</span></div>
+        </div>
+        <div class="info-group">
+          <strong>Cores</strong>
+          ${renderColorOptions(product, selectedColor) || "<div class=\"chip-row\"><span>Consultar</span></div>"}
+        </div>
+        <div class="info-group">
+          <strong>Tamanhos</strong>
+          <div class="chip-row">${renderChips(product.sizes || []) || "<span>Consultar</span>"}</div>
+        </div>
+        <div class="dialog-actions">
+          <button class="button button-primary" type="button" data-add-cart="${escapeAttr(product.id)}">${escapeHtml(cartButtonLabel(product.id))}</button>
+          <a class="button button-quiet" href="${buildWhatsappUrl(productMessage(product))}">Pedir agora</a>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderProductPageCarouselControls(productId, images, imageIndex) {
+  if (images.length < 2) {
+    return "";
+  }
+
+  return `
+    <div class="carousel-controls product-page-carousel-controls" aria-label="Fotos do produto">
+      <button class="carousel-button" type="button" data-product-id="${escapeAttr(productId)}" data-product-page-carousel="prev" aria-label="Foto anterior">‹</button>
+      <button class="carousel-button" type="button" data-product-id="${escapeAttr(productId)}" data-product-page-carousel="next" aria-label="Próxima foto">›</button>
+    </div>
+    <div class="carousel-dots product-page-carousel-dots" aria-hidden="true">
+      ${images.map((_image, index) => `<span class="${index === imageIndex ? "active" : ""}"></span>`).join("")}
+    </div>
+  `;
+}
+
+function moveProductPageCarousel(productId, action) {
+  const product = state.products.find((item) => item.id === productId);
+  const images = productImages(product, selectedProductColor(product));
+
+  if (!product || images.length < 2) {
+    return;
+  }
+
+  const current = state.carouselIndexes[productId] || 0;
+  state.carouselIndexes[productId] =
+    action === "prev" ? (current - 1 + images.length) % images.length : (current + 1) % images.length;
+  renderProductPage(product);
 }
 
 function renderProductDialog(product) {
@@ -1318,13 +1533,31 @@ function productMessage(product) {
   return `Olá! Tenho interesse na peça ${product.name} (${money.format(product.price || 0)}).\nEnvio: ${deliveryLabel(productDeliveryType(product))}.\n\nFoto e detalhes: ${productLink(product)}`;
 }
 
-function productLink(product) {
-  return `${location.origin}/produto/${encodeURIComponent(product.id)}`;
+function productLink(product, color = "") {
+  const url = new URL(`/produto/${encodeURIComponent(product.id)}`, location.origin);
+
+  if (color) {
+    url.searchParams.set("cor", color);
+  }
+
+  return url.toString();
 }
 
-function productImages(product = {}) {
+function productImages(product = {}, color = "") {
   const images = Array.isArray(product.images) ? product.images : [];
-  return [...new Set([...images, product.image].filter(Boolean))];
+  const allImages = [...new Set([...images, product.image].filter(Boolean))];
+  const selectedColor = normalizeForFilter(color);
+
+  if (!selectedColor) {
+    return allImages;
+  }
+
+  const filteredImages = allImages.filter((image) => {
+    const imageColor = product.imageColors?.[image];
+    return normalizeForFilter(imageColor) === selectedColor;
+  });
+
+  return filteredImages.length ? filteredImages : allImages;
 }
 
 function buildWhatsappUrl(message) {

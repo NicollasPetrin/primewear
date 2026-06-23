@@ -53,13 +53,14 @@
     </header>
 
     <main>
-      <section class="store-banner" aria-label="Destaque da loja">
-        <span>Primewear Imports</span>
-        <strong>Importados selecionados, envio imediato e atendimento pelo WhatsApp.</strong>
-        <a href="#catalogo">Ver novidades</a>
-      </section>
+      <div class="store-home" id="storeHome">
+        <section class="store-banner" aria-label="Destaque da loja">
+          <span>Primewear Imports</span>
+          <strong>Importados selecionados, envio imediato e atendimento pelo WhatsApp.</strong>
+          <a href="#catalogo">Ver novidades</a>
+        </section>
 
-      <section class="hero" aria-labelledby="hero-title">
+        <section class="hero" aria-labelledby="hero-title">
         <img
           class="hero-image"
           src="/assets/boutique-hero.png"
@@ -77,9 +78,9 @@
             <a class="button button-ghost" data-whatsapp-link href="#">Chamar no WhatsApp</a>
           </div>
         </div>
-      </section>
+        </section>
 
-      <section class="brand-wall" id="marcas" aria-labelledby="brand-wall-title" hidden>
+        <section class="brand-wall" id="marcas" aria-labelledby="brand-wall-title" hidden>
         <div class="section-heading">
           <div>
             <p class="eyebrow">Marcas</p>
@@ -88,9 +89,9 @@
           <p>Toque em uma marca para ver as peças disponíveis.</p>
         </div>
         <div class="brand-wall-grid" id="brandWallGrid" aria-label="Marcas disponíveis"></div>
-      </section>
+        </section>
 
-      <section class="catalog-band" id="catalogo" aria-labelledby="catalog-title">
+        <section class="catalog-band" id="catalogo" aria-labelledby="catalog-title">
         <div class="section-heading">
           <div>
             <p class="eyebrow">Vitrine</p>
@@ -167,9 +168,9 @@
           <p>Use outros filtros ou fale com a loja para saber das novidades.</p>
           <a class="button button-primary" data-whatsapp-link href="#">Falar com a loja</a>
         </div>
-      </section>
+        </section>
 
-      <section class="contact-band" id="contato" aria-labelledby="contact-title">
+        <section class="contact-band" id="contato" aria-labelledby="contact-title">
         <div>
           <p class="eyebrow">Atendimento</p>
           <h2 id="contact-title">Gostou de alguma peça?</h2>
@@ -181,7 +182,10 @@
           <a class="button button-primary" data-whatsapp-link href="#">Abrir WhatsApp</a>
           <a class="button button-quiet" id="instagramLink" href="#" hidden>Instagram</a>
         </div>
-      </section>
+        </section>
+      </div>
+
+      <section class="product-page" id="productPage" hidden></section>
     </main>
 
     <footer class="site-footer">

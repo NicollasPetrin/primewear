@@ -9,6 +9,7 @@ const state = {
   editingId: null,
   selectedImages: [],
   existingImages: [],
+  imageColors: {},
   imageEditor: {
     index: null,
     image: null,
@@ -90,6 +91,7 @@ function bindEvents() {
   fields.productImage.addEventListener("change", previewSelectedImage);
   fields.productReplaceImages.addEventListener("change", renderImagePreview);
   fields.imagePreview.addEventListener("click", handleImagePreviewClick);
+  fields.imagePreview.addEventListener("input", handleImageColorInput);
   fields.imageEditorClose.addEventListener("click", closeImageEditor);
   fields.imageEditorReset.addEventListener("click", resetImageEditor);
   fields.imageEditorApply.addEventListener("click", applyImageEdit);
@@ -178,6 +180,7 @@ async function handleProductSubmit(event) {
   formData.set("featured", String(fields.productFeatured.checked));
   formData.set("deliveryType", fields.productDeliveryType.value);
   formData.set("replaceImages", String(shouldReplaceImages));
+  formData.set("imageColors", JSON.stringify(imageColorsForSubmit(shouldReplaceImages)));
   formData.delete("images");
 
   state.selectedImages.forEach((item, index) => {
@@ -301,6 +304,7 @@ function editProduct(productId) {
   fields.productMessage.textContent = "";
   clearSelectedImages();
   state.existingImages = productImages(product);
+  state.imageColors = cleanImageColors(product.imageColors);
   renderImagePreview();
   document.querySelector("#productsTab").scrollIntoView({ behavior: "smooth", block: "start" });
 }
@@ -322,6 +326,7 @@ function resetProductForm() {
   state.editingId = null;
   clearSelectedImages();
   state.existingImages = [];
+  state.imageColors = {};
   document.querySelector("#productForm").reset();
   fields.productActive.checked = true;
   fields.productInStock.checked = true;
@@ -361,6 +366,7 @@ function previewSelectedImage() {
       file,
       previewUrl: URL.createObjectURL(file),
       editedBlob: null,
+      color: firstProductColor(),
       fromExisting: false
     }));
 
@@ -387,6 +393,7 @@ function renderImagePreview() {
           index,
           source,
           label: "Atual",
+          color: state.imageColors[source] || "",
           editable: true,
           removable: false
         }))
@@ -396,6 +403,7 @@ function renderImagePreview() {
       index,
       source: item.previewUrl,
       label: item.fromExisting ? "Atual editada" : "Nova",
+      color: item.color || "",
       editable: true,
       removable: !item.fromExisting
     }))
@@ -419,6 +427,22 @@ function renderImagePreview() {
     badge.className = "image-preview-badge";
     badge.textContent = item.label;
     card.append(badge);
+
+    const colorInput = document.createElement("input");
+    colorInput.className = "image-color-input";
+    colorInput.type = "text";
+    colorInput.setAttribute("list", "productColorOptions");
+    colorInput.placeholder = "Cor da foto";
+    colorInput.value = item.color || "";
+    colorInput.setAttribute("aria-label", `Cor da foto ${visualIndex + 1}`);
+
+    if (item.type === "existing") {
+      colorInput.dataset.existingImageColor = String(item.index);
+    } else {
+      colorInput.dataset.selectedImageColor = String(item.index);
+    }
+
+    card.append(colorInput);
 
     if (item.editable) {
       const editButton = document.createElement("button");
@@ -450,6 +474,107 @@ function renderImagePreview() {
 
 function renderSelectedImagePreview() {
   renderImagePreview();
+}
+
+function handleImageColorInput(event) {
+  const existingInput = event.target.closest("[data-existing-image-color]");
+  const selectedInput = event.target.closest("[data-selected-image-color]");
+
+  if (existingInput) {
+    const source = state.existingImages[Number(existingInput.dataset.existingImageColor)];
+
+    if (source) {
+      state.imageColors[source] = existingInput.value.trim();
+      syncProductColorsFromImages();
+    }
+
+    return;
+  }
+
+  if (!selectedInput) {
+    return;
+  }
+
+  const item = state.selectedImages[Number(selectedInput.dataset.selectedImageColor)];
+
+  if (item) {
+    item.color = selectedInput.value.trim();
+    syncProductColorsFromImages();
+  }
+}
+
+function imageColorsForSubmit(shouldReplaceImages) {
+  const colors = [];
+
+  if (!shouldReplaceImages) {
+    state.existingImages.forEach((source) => {
+      colors.push(state.imageColors[source] || "");
+    });
+  }
+
+  state.selectedImages.forEach((item) => {
+    colors.push(item.color || "");
+  });
+
+  return colors;
+}
+
+function syncProductColorsFromImages() {
+  const colors = uniqueTexts([
+    ...parseCommaList(fields.productColors.value),
+    ...Object.values(state.imageColors),
+    ...state.selectedImages.map((item) => item.color)
+  ]);
+
+  fields.productColors.value = colors.join(", ");
+}
+
+function firstProductColor() {
+  return parseCommaList(fields.productColors.value)[0] || "";
+}
+
+function parseCommaList(value) {
+  return String(value || "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function uniqueTexts(values) {
+  const seen = new Set();
+
+  return values
+    .map((value) => String(value || "").trim())
+    .filter((value) => {
+      const key = normalizeText(value);
+
+      if (!value || seen.has(key)) {
+        return false;
+      }
+
+      seen.add(key);
+      return true;
+    });
+}
+
+function normalizeText(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
+function cleanImageColors(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {};
+  }
+
+  return Object.fromEntries(
+    Object.entries(value)
+      .map(([source, color]) => [source, String(color || "").trim()])
+      .filter(([source, color]) => source && color)
+  );
 }
 
 function clearSelectedImages() {
@@ -545,6 +670,7 @@ async function prepareExistingImagesForEditing() {
         file,
         previewUrl: URL.createObjectURL(blob),
         editedBlob: null,
+        color: state.imageColors[source] || "",
         fromExisting: true
       };
     })
@@ -552,6 +678,7 @@ async function prepareExistingImagesForEditing() {
 
   state.selectedImages = [...images, ...queuedImages];
   state.existingImages = [];
+  state.imageColors = {};
   fields.productReplaceImages.checked = true;
   fields.replaceImagesToggle.hidden = false;
   renderImagePreview();

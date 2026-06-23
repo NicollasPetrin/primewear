@@ -145,6 +145,56 @@ function parseList(value) {
     .filter(Boolean);
 }
 
+function parseJsonList(value) {
+  if (Array.isArray(value)) {
+    return value.map((item) => cleanText(item, 40));
+  }
+
+  const text = cleanText(value, 2000);
+
+  if (!text) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(text);
+    return Array.isArray(parsed) ? parsed.map((item) => cleanText(item, 40)) : [];
+  } catch {
+    return parseList(text);
+  }
+}
+
+function cleanImageColorMap(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {};
+  }
+
+  return Object.fromEntries(
+    Object.entries(value)
+      .map(([image, color]) => [cleanText(image, 180), cleanText(color, 40)])
+      .filter(([image, color]) => image && color)
+  );
+}
+
+function uniqueTexts(values) {
+  const seen = new Set();
+
+  return values.filter((value) => {
+    const text = cleanText(value, 40);
+    const key = text
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase();
+
+    if (!text || seen.has(key)) {
+      return false;
+    }
+
+    seen.add(key);
+    return true;
+  });
+}
+
 function parseBoolean(value, fallback = false) {
   if (value === undefined || value === null || value === "") {
     return fallback;
@@ -236,6 +286,19 @@ function normalizeProduct(input, existing = {}, files = []) {
   const images = [...new Set([...existingImages, ...uploadedImages])].slice(0, 12);
   const fallbackImage = cleanText(input.image ?? existing.image, 180);
   const image = images[0] || fallbackImage;
+  const finalImages = image ? [...new Set([image, ...images])] : [];
+  const submittedImageColors = parseJsonList(input.imageColors);
+  const existingImageColors = cleanImageColorMap(existing.imageColors);
+  const imageColors = {};
+
+  finalImages.forEach((source, index) => {
+    const color = cleanText(submittedImageColors[index], 40) || (!replaceImages ? existingImageColors[source] : "");
+
+    if (color) {
+      imageColors[source] = color;
+    }
+  });
+  const colors = uniqueTexts([...parseList(input.colors ?? existing.colors), ...Object.values(imageColors)]);
 
   return {
     id: existing.id || crypto.randomUUID(),
@@ -245,10 +308,11 @@ function normalizeProduct(input, existing = {}, files = []) {
     brand,
     deliveryType,
     sizes: parseList(input.sizes ?? existing.sizes),
-    colors: parseList(input.colors ?? existing.colors),
+    colors,
     description: cleanText(input.description ?? existing.description, 500),
     image,
-    images: image ? [...new Set([image, ...images])] : [],
+    images: finalImages,
+    imageColors,
     featured: parseBoolean(input.featured, existing.featured || false),
     inStock: parseBoolean(input.inStock, existing.inStock ?? true),
     active: parseBoolean(input.active, existing.active ?? true),
