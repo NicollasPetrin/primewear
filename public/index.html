@@ -8,6 +8,8 @@
       name="description"
       content="Catálogo online de roupas com novidades, tamanhos, cores e atendimento por WhatsApp."
     />
+    <meta name="theme-color" content="#071525" />
+    <link rel="icon" type="image/png" href="/assets/primewear-logo-cropped.png" />
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body class="store-page">
@@ -43,10 +45,20 @@
           <div class="nav-dropdown-menu" id="navBrandsMenu"></div>
         </div>
       </nav>
+      <button class="cart-toggle" id="cartToggle" type="button" aria-label="Abrir carrinho">
+        <span class="cart-toggle-label">Carrinho</span>
+        <span class="cart-count" id="cartCount">0</span>
+      </button>
       <div class="menu-overlay" id="menuOverlay" hidden></div>
     </header>
 
     <main>
+      <section class="store-banner" aria-label="Destaque da loja">
+        <span>Primewear Imports</span>
+        <strong>Importados selecionados, envio imediato e atendimento pelo WhatsApp.</strong>
+        <a href="#catalogo">Ver novidades</a>
+      </section>
+
       <section class="hero" aria-labelledby="hero-title">
         <img
           class="hero-image"
@@ -182,6 +194,31 @@
         ×
       </button>
       <div class="dialog-body" id="dialogBody"></div>
+    </dialog>
+
+    <dialog class="cart-dialog" id="cartDialog">
+      <button class="icon-close" id="closeCart" type="button" aria-label="Fechar carrinho">
+        ×
+      </button>
+      <div class="cart-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">Carrinho</p>
+            <h2>Itens selecionados</h2>
+          </div>
+          <button class="button button-quiet" id="clearCartButton" type="button">Limpar</button>
+        </div>
+        <div class="cart-items" id="cartItems"></div>
+        <div class="cart-empty" id="cartEmpty">
+          <h3>Seu carrinho está vazio</h3>
+          <p>Adicione as peças que gostou e envie tudo junto pelo WhatsApp.</p>
+          <a class="button button-primary" href="#catalogo" data-close-cart>Ver catálogo</a>
+        </div>
+        <div class="cart-summary">
+          <p id="cartTotal">Total estimado: R$ 0,00</p>
+          <a class="button button-primary" id="cartWhatsappLink" href="#">Enviar pelo WhatsApp</a>
+        </div>
+      </div>
     </dialog>
 
     <script src="/app.js" type="module"></script>
