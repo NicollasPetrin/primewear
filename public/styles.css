@@ -72,6 +72,8 @@ textarea {
 }
 
 .menu-toggle {
+  position: relative;
+  z-index: 90;
   display: inline-grid;
   place-items: center;
   gap: 4px;
@@ -132,21 +134,48 @@ textarea {
   text-transform: uppercase;
 }
 
-.site-nav {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
+body.menu-open {
+  overflow: hidden;
+}
+
+.menu-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  background: rgba(2, 2, 2, 0.52);
+  backdrop-filter: blur(2px);
+}
+
+.menu-overlay[hidden] {
   display: none;
+}
+
+.site-nav {
+  position: fixed;
+  top: 52px;
+  bottom: 0;
+  left: 0;
+  z-index: 80;
+  display: flex;
+  width: min(360px, calc(100vw - 34px));
+  flex-direction: column;
   align-items: stretch;
-  gap: 0;
-  overflow-x: auto;
-  background: #020202;
-  border-top: 1px solid rgba(212, 170, 87, 0.22);
+  gap: 4px;
+  padding: 18px;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, rgba(7, 21, 37, 0.98), rgba(2, 2, 2, 0.98)),
+    #020202;
+  border-right: 1px solid rgba(212, 170, 87, 0.42);
+  box-shadow: 22px 0 54px rgba(0, 0, 0, 0.34);
+  pointer-events: none;
+  transform: translateX(-104%);
+  transition: transform 220ms ease;
 }
 
 .site-nav.is-open {
-  display: flex;
+  pointer-events: auto;
+  transform: translateX(0);
 }
 
 .hero-actions,
@@ -166,9 +195,13 @@ textarea {
   position: relative;
   display: inline-flex;
   align-items: center;
-  min-height: 52px;
-  padding: 0 14px;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 46px;
+  padding: 0 10px;
   border: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
   background: transparent;
   color: white;
   font-size: 14px;
@@ -195,37 +228,79 @@ textarea {
 .nav-chevron {
   margin-left: 5px;
   font-size: 16px;
+  transition: transform 160ms ease;
 }
 
 .nav-dropdown {
-  position: relative;
+  position: static;
+}
+
+.nav-dropdown.is-open .nav-chevron {
+  transform: rotate(90deg);
 }
 
 .nav-dropdown-menu {
   position: absolute;
-  top: 100%;
-  left: 0;
-  z-index: 60;
-  display: none;
-  min-width: 210px;
-  padding: 8px;
-  background: #050505;
-  border: 1px solid rgba(212, 170, 87, 0.38);
-  box-shadow: 0 18px 36px rgba(0, 0, 0, 0.26);
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  padding: 18px;
+  overflow-y: auto;
+  background:
+    linear-gradient(180deg, rgba(16, 38, 59, 0.98), rgba(2, 2, 2, 0.99)),
+    #050505;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(100%);
+  transition:
+    opacity 180ms ease,
+    transform 220ms ease;
+  visibility: hidden;
 }
 
 .nav-dropdown.is-open .nav-dropdown-menu {
-  display: grid;
-  gap: 4px;
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(0);
+  visibility: visible;
+}
+
+.nav-menu-back {
+  justify-self: start;
+  min-height: 38px;
+  padding: 0 10px;
+  border: 1px solid rgba(212, 170, 87, 0.36);
+  border-radius: 8px;
+  background: rgba(7, 21, 37, 0.52);
+  color: white;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.nav-menu-back::before {
+  margin-right: 6px;
+  content: "‹";
+}
+
+.nav-menu-title {
+  margin: 4px 0 8px;
+  color: var(--gold-light);
+  font-size: 13px;
+  font-weight: 950;
+  text-transform: uppercase;
 }
 
 .nav-menu-item {
   width: 100%;
-  min-height: 38px;
-  padding: 8px 10px;
-  border: 0;
+  min-height: 42px;
+  padding: 9px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 6px;
-  background: transparent;
+  background: rgba(255, 255, 255, 0.03);
   color: white;
   cursor: pointer;
   font-weight: 750;
@@ -1372,28 +1447,18 @@ textarea:focus {
   }
 
   .site-nav {
-    flex-direction: column;
-    align-items: stretch;
-    width: 100%;
-    padding: 8px 14px 12px;
-    overflow-x: visible;
+    top: 58px;
+    width: min(340px, calc(100vw - 28px));
+    padding: 16px;
   }
 
   .site-nav a,
   .nav-link-button {
-    width: 100%;
-    justify-content: space-between;
     min-height: 42px;
-    padding: 0 4px;
   }
 
   .nav-dropdown-menu {
-    position: static;
-    min-width: 0;
-    margin: 0 0 8px 12px;
-    border: 0;
-    border-left: 1px solid rgba(212, 170, 87, 0.34);
-    box-shadow: none;
+    padding: 16px;
   }
 
   .hero {

@@ -30,6 +30,7 @@ const elements = {
   brandWall: document.querySelector("#marcas"),
   brandWallGrid: document.querySelector("#brandWallGrid"),
   menuToggle: document.querySelector("#menuToggle"),
+  menuOverlay: document.querySelector("#menuOverlay"),
   siteNav: document.querySelector("#siteNav"),
   navClothing: document.querySelector("#navClothingMenu"),
   navSneakers: document.querySelector("#navSneakersMenu"),
@@ -144,6 +145,7 @@ function bindEvents() {
   });
 
   elements.menuToggle.addEventListener("click", toggleSiteMenu);
+  elements.menuOverlay.addEventListener("click", closeSiteMenu);
   elements.clearFilters.addEventListener("click", () => {
     resetFilters();
     renderProducts();
@@ -184,9 +186,15 @@ function bindEvents() {
   });
 
   elements.siteNav.addEventListener("click", (event) => {
+    const backButton = event.target.closest("[data-nav-back]");
     const dropdownButton = event.target.closest("[data-nav-dropdown]");
     const filterButton = event.target.closest("[data-nav-group], [data-nav-brand], [data-nav-category], [data-nav-search], [data-nav-delivery]");
     const closeLink = event.target.closest("[data-nav-close]");
+
+    if (backButton) {
+      closeNavDropdowns();
+      return;
+    }
 
     if (dropdownButton) {
       toggleNavDropdown(dropdownButton);
@@ -204,11 +212,11 @@ function bindEvents() {
   });
 
   document.addEventListener("click", (event) => {
-    if (event.target.closest(".site-header")) {
+    if (event.target.closest(".site-header") || event.target.closest(".site-nav")) {
       return;
     }
 
-    closeNavDropdowns();
+    closeSiteMenu();
   });
 
   document.addEventListener("keydown", (event) => {
@@ -219,11 +227,11 @@ function bindEvents() {
   });
 
   document.addEventListener("focusin", (event) => {
-    if (event.target.closest(".site-header")) {
+    if (event.target.closest(".site-header") || event.target.closest(".site-nav")) {
       return;
     }
 
-    closeNavDropdowns();
+    closeSiteMenu();
   });
 
   elements.siteNav.addEventListener("keydown", (event) => {
@@ -232,7 +240,6 @@ function bindEvents() {
     }
 
     closeSiteMenu();
-    closeNavDropdowns();
     elements.menuToggle.focus();
   });
 
@@ -374,6 +381,8 @@ function toggleSiteMenu() {
   elements.siteNav.classList.toggle("is-open", open);
   elements.menuToggle.classList.toggle("is-open", open);
   elements.menuToggle.setAttribute("aria-expanded", String(open));
+  elements.menuOverlay.hidden = !open;
+  document.body.classList.toggle("menu-open", open);
 
   if (!open) {
     closeNavDropdowns();
@@ -384,6 +393,8 @@ function closeSiteMenu() {
   elements.siteNav.classList.remove("is-open");
   elements.menuToggle.classList.remove("is-open");
   elements.menuToggle.setAttribute("aria-expanded", "false");
+  elements.menuOverlay.hidden = true;
+  document.body.classList.remove("menu-open");
   closeNavDropdowns();
 }
 
@@ -394,6 +405,7 @@ function toggleNavDropdown(button) {
   closeNavDropdowns(dropdown);
   dropdown.classList.toggle("is-open", open);
   button.setAttribute("aria-expanded", String(open));
+  elements.siteNav.classList.toggle("has-submenu-open", open);
 }
 
 function closeNavDropdowns(except = null) {
@@ -405,6 +417,7 @@ function closeNavDropdowns(except = null) {
     dropdown.classList.remove("is-open");
     dropdown.querySelector("[data-nav-dropdown]")?.setAttribute("aria-expanded", "false");
   });
+  elements.siteNav.classList.toggle("has-submenu-open", Boolean(except));
 }
 
 function applyNavFilter(button) {
@@ -491,8 +504,16 @@ function renderNavMenus(products) {
     type: "category"
   });
   elements.navBrands.innerHTML = brands.length
-    ? brands.map((brand) => navMenuButton(brand, { brand })).join("")
-    : `<p class="nav-menu-empty">Nenhuma marca cadastrada.</p>`;
+    ? [
+        `<button class="nav-menu-back" type="button" data-nav-back>Voltar</button>`,
+        `<p class="nav-menu-title">Marcas</p>`,
+        ...brands.map((brand) => navMenuButton(brand, { brand }))
+      ].join("")
+    : [
+        `<button class="nav-menu-back" type="button" data-nav-back>Voltar</button>`,
+        `<p class="nav-menu-title">Marcas</p>`,
+        `<p class="nav-menu-empty">Nenhuma marca cadastrada.</p>`
+      ].join("");
 }
 
 function renderBrandWall(products) {
@@ -553,6 +574,8 @@ function updateBrandWallState() {
 
 function renderNavMenuItems({ allLabel, emptyLabel, group, values, type }) {
   const items = [
+    `<button class="nav-menu-back" type="button" data-nav-back>Voltar</button>`,
+    `<p class="nav-menu-title">${escapeHtml(allLabel.replace(/^Ver todos em\s*/i, ""))}</p>`,
     navMenuButton(allLabel, { group }),
     ...values.map((value) =>
       navMenuButton(value, {
