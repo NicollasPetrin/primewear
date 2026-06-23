@@ -225,6 +225,39 @@
       </main>
     </div>
 
+    <dialog class="image-editor-dialog" id="imageEditorDialog" aria-labelledby="imageEditorTitle">
+      <div class="image-editor-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">Foto</p>
+            <h2 id="imageEditorTitle">Editar foto</h2>
+          </div>
+          <button class="icon-close" id="imageEditorClose" type="button" aria-label="Fechar">
+            ×
+          </button>
+        </div>
+
+        <div class="image-editor-stage">
+          <canvas id="imageEditorCanvas" width="960" height="1200"></canvas>
+        </div>
+
+        <div class="image-editor-controls">
+          <label>
+            <span>Zoom</span>
+            <input id="imageEditorZoom" type="range" min="1" max="3" value="1" step="0.01" />
+          </label>
+          <div class="image-editor-actions">
+            <button class="button button-quiet" id="imageEditorReset" type="button">
+              Centralizar
+            </button>
+            <button class="button button-primary" id="imageEditorApply" type="button">
+              Aplicar recorte
+            </button>
+          </div>
+        </div>
+      </div>
+    </dialog>
+
     <script src="/admin.js" type="module"></script>
   </body>
 </html>
