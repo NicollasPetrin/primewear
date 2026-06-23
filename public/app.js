@@ -80,8 +80,8 @@ function applySettings(settings) {
   const whatsappUrl = buildWhatsappUrl("Olá! Vi o catálogo e quero atendimento.");
   document.querySelectorAll("[data-whatsapp-link]").forEach((link) => {
     link.href = whatsappUrl || "#";
-    link.target = whatsappUrl ? "_blank" : "";
-    link.rel = whatsappUrl ? "noreferrer" : "";
+    link.removeAttribute("target");
+    link.removeAttribute("rel");
     link.addEventListener("click", (event) => {
       if (!whatsappUrl) {
         event.preventDefault();
@@ -218,7 +218,7 @@ function createProductCard(product) {
       <p class="product-price">${money.format(product.price || 0)}</p>
       <div class="chip-row">${renderChips([...(product.sizes || []), ...(product.colors || [])])}</div>
       <div class="product-actions">
-        <a class="button button-primary" href="${buildWhatsappUrl(productMessage(product))}" target="_blank" rel="noreferrer">Pedir</a>
+        <a class="button button-primary" href="${buildWhatsappUrl(productMessage(product))}">Pedir</a>
         <button class="button button-quiet" type="button" data-open-product="${escapeAttr(product.id)}">Detalhes</button>
       </div>
     </div>
@@ -266,7 +266,7 @@ function openProduct(productId, push = true) {
         <div class="chip-row">${renderChips(product.colors || []) || "<span>Consultar</span>"}</div>
       </div>
       <div class="dialog-actions">
-        <a class="button button-primary" href="${buildWhatsappUrl(productMessage(product))}" target="_blank" rel="noreferrer">Pedir pelo WhatsApp</a>
+        <a class="button button-primary" href="${buildWhatsappUrl(productMessage(product))}">Pedir pelo WhatsApp</a>
         <button class="button button-quiet" id="copyProductLink" type="button">Copiar link</button>
       </div>
     </div>
@@ -303,7 +303,7 @@ function buildWhatsappUrl(message) {
     return "";
   }
 
-  return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+  return `https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(message)}`;
 }
 
 function escapeHtml(value) {
