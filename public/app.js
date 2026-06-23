@@ -6,6 +6,9 @@ const money = new Intl.NumberFormat("pt-BR", {
 const state = {
   settings: null,
   products: [],
+  carouselIndexes: {},
+  dialogProductId: null,
+  dialogImageIndex: 0,
   filters: {
     search: "",
     category: "",
@@ -114,10 +117,45 @@ function bindEvents() {
   });
 
   elements.grid.addEventListener("click", (event) => {
+    const carouselButton = event.target.closest("[data-carousel-action]");
+
+    if (carouselButton) {
+      event.preventDefault();
+      event.stopPropagation();
+      moveCardCarousel(carouselButton.dataset.productId, carouselButton.dataset.carouselAction);
+      return;
+    }
+
     const button = event.target.closest("[data-open-product]");
 
     if (button) {
       openProduct(button.dataset.openProduct);
+    }
+  });
+
+  elements.grid.addEventListener("keydown", (event) => {
+    if (event.target.closest("[data-carousel-action]")) {
+      return;
+    }
+
+    if (event.key !== "Enter" && event.key !== " ") {
+      return;
+    }
+
+    const cardPhoto = event.target.closest("[data-open-product]");
+
+    if (cardPhoto) {
+      event.preventDefault();
+      openProduct(cardPhoto.dataset.openProduct);
+    }
+  });
+
+  elements.dialogBody.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-dialog-carousel]");
+
+    if (button) {
+      event.preventDefault();
+      moveDialogCarousel(button.dataset.dialogCarousel);
     }
   });
 
@@ -206,12 +244,16 @@ function filteredProducts() {
 function createProductCard(product) {
   const article = document.createElement("article");
   article.className = "product-card";
+  const images = productImages(product);
+  const imageIndex = Math.min(state.carouselIndexes[product.id] || 0, Math.max(images.length - 1, 0));
+  const currentImage = images[imageIndex];
 
   article.innerHTML = `
-    <button class="product-photo" type="button" data-open-product="${escapeAttr(product.id)}">
-      ${product.image ? `<img src="${escapeAttr(product.image)}" alt="${escapeAttr(product.name)}" loading="lazy" />` : `<span>Sem foto</span>`}
+    <div class="product-photo" role="button" tabindex="0" data-open-product="${escapeAttr(product.id)}">
+      ${currentImage ? `<img src="${escapeAttr(currentImage)}" alt="${escapeAttr(product.name)}" loading="lazy" />` : `<span>Sem foto</span>`}
       ${product.featured ? `<strong>Destaque</strong>` : ""}
-    </button>
+      ${renderCarouselControls(product.id, images, imageIndex)}
+    </div>
     <div class="product-content">
       <p class="product-category">${escapeHtml(product.category || "Geral")}</p>
       <h3>${escapeHtml(product.name)}</h3>
@@ -225,6 +267,36 @@ function createProductCard(product) {
   `;
 
   return article;
+}
+
+function renderCarouselControls(productId, images, imageIndex) {
+  if (images.length < 2) {
+    return "";
+  }
+
+  return `
+    <div class="carousel-controls" aria-label="Fotos do produto">
+      <button class="carousel-button" type="button" data-product-id="${escapeAttr(productId)}" data-carousel-action="prev" aria-label="Foto anterior">‹</button>
+      <button class="carousel-button" type="button" data-product-id="${escapeAttr(productId)}" data-carousel-action="next" aria-label="Próxima foto">›</button>
+    </div>
+    <div class="carousel-dots" aria-hidden="true">
+      ${images.map((_image, index) => `<span class="${index === imageIndex ? "active" : ""}"></span>`).join("")}
+    </div>
+  `;
+}
+
+function moveCardCarousel(productId, action) {
+  const product = state.products.find((item) => item.id === productId);
+  const images = productImages(product);
+
+  if (images.length < 2) {
+    return;
+  }
+
+  const current = state.carouselIndexes[productId] || 0;
+  state.carouselIndexes[productId] =
+    action === "prev" ? (current - 1 + images.length) % images.length : (current + 1) % images.length;
+  renderProducts();
 }
 
 function renderChips(items) {
@@ -248,9 +320,29 @@ function openProduct(productId, push = true) {
     return;
   }
 
+  state.dialogProductId = product.id;
+  state.dialogImageIndex = Math.min(
+    state.carouselIndexes[product.id] || 0,
+    Math.max(productImages(product).length - 1, 0)
+  );
+  renderProductDialog(product);
+
+  if (push) {
+    history.pushState({}, "", `/produto/${product.id}`);
+  }
+
+  elements.dialog.showModal();
+}
+
+function renderProductDialog(product) {
+  const images = productImages(product);
+  const imageIndex = Math.min(state.dialogImageIndex, Math.max(images.length - 1, 0));
+  const currentImage = images[imageIndex];
+
   elements.dialogBody.innerHTML = `
     <div class="dialog-photo">
-      ${product.image ? `<img src="${escapeAttr(product.image)}" alt="${escapeAttr(product.name)}" />` : `<span>Sem foto</span>`}
+      ${currentImage ? `<img src="${escapeAttr(currentImage)}" alt="${escapeAttr(product.name)}" />` : `<span>Sem foto</span>`}
+      ${renderDialogCarouselControls(images, imageIndex)}
     </div>
     <div class="dialog-info">
       <p class="product-category">${escapeHtml(product.category || "Geral")}</p>
@@ -276,12 +368,38 @@ function openProduct(productId, push = true) {
     await navigator.clipboard.writeText(`${location.origin}/produto/${product.id}`);
     document.querySelector("#copyProductLink").textContent = "Link copiado";
   });
+}
 
-  if (push) {
-    history.pushState({}, "", `/produto/${product.id}`);
+function renderDialogCarouselControls(images, imageIndex) {
+  if (images.length < 2) {
+    return "";
   }
 
-  elements.dialog.showModal();
+  return `
+    <div class="carousel-controls dialog-carousel-controls" aria-label="Fotos do produto">
+      <button class="carousel-button" type="button" data-dialog-carousel="prev" aria-label="Foto anterior">‹</button>
+      <button class="carousel-button" type="button" data-dialog-carousel="next" aria-label="Próxima foto">›</button>
+    </div>
+    <div class="carousel-dots dialog-carousel-dots" aria-hidden="true">
+      ${images.map((_image, index) => `<span class="${index === imageIndex ? "active" : ""}"></span>`).join("")}
+    </div>
+  `;
+}
+
+function moveDialogCarousel(action) {
+  const product = state.products.find((item) => item.id === state.dialogProductId);
+  const images = productImages(product);
+
+  if (!product || images.length < 2) {
+    return;
+  }
+
+  state.dialogImageIndex =
+    action === "prev"
+      ? (state.dialogImageIndex - 1 + images.length) % images.length
+      : (state.dialogImageIndex + 1) % images.length;
+  state.carouselIndexes[product.id] = state.dialogImageIndex;
+  renderProductDialog(product);
 }
 
 function closeProductDialog() {
@@ -294,6 +412,11 @@ function closeProductDialog() {
 
 function productMessage(product) {
   return `Olá! Tenho interesse na peça ${product.name} (${money.format(product.price || 0)}).`;
+}
+
+function productImages(product = {}) {
+  const images = Array.isArray(product.images) ? product.images : [];
+  return [...new Set([...images, product.image].filter(Boolean))];
 }
 
 function buildWhatsappUrl(message) {

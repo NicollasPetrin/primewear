@@ -119,11 +119,11 @@
               </label>
 
               <label class="file-picker">
-                <span>Foto da peça</span>
-                <input id="productImage" name="image" type="file" accept="image/*" />
-                <strong>Selecionar imagem</strong>
+                <span>Fotos da peça</span>
+                <input id="productImage" name="images" type="file" accept="image/*" multiple />
+                <strong>Selecionar imagens</strong>
               </label>
-              <div class="image-preview" id="imagePreview">Sem foto</div>
+              <div class="image-preview image-preview-grid" id="imagePreview">Sem foto</div>
 
               <div class="toggle-grid">
                 <label class="toggle">
@@ -137,6 +137,10 @@
                 <label class="toggle">
                   <input id="productFeatured" type="checkbox" />
                   <span>Destaque</span>
+                </label>
+                <label class="toggle" id="replaceImagesToggle" hidden>
+                  <input id="productReplaceImages" type="checkbox" />
+                  <span>Substituir fotos atuais</span>
                 </label>
               </div>
 

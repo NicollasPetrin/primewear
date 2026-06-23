@@ -22,6 +22,8 @@ const fields = {
   productColors: document.querySelector("#productColors"),
   productDescription: document.querySelector("#productDescription"),
   productImage: document.querySelector("#productImage"),
+  productReplaceImages: document.querySelector("#productReplaceImages"),
+  replaceImagesToggle: document.querySelector("#replaceImagesToggle"),
   productActive: document.querySelector("#productActive"),
   productInStock: document.querySelector("#productInStock"),
   productFeatured: document.querySelector("#productFeatured"),
@@ -134,9 +136,10 @@ async function handleProductSubmit(event) {
   formData.set("active", String(fields.productActive.checked));
   formData.set("inStock", String(fields.productInStock.checked));
   formData.set("featured", String(fields.productFeatured.checked));
+  formData.set("replaceImages", String(fields.productReplaceImages.checked));
 
   if (!fields.productImage.files.length) {
-    formData.delete("image");
+    formData.delete("images");
   }
 
   const url = state.editingId
@@ -199,7 +202,7 @@ function renderAdminProducts() {
     item.className = "admin-product-item";
     item.innerHTML = `
       <div class="admin-thumb">
-        ${product.image ? `<img src="${escapeAttr(product.image)}" alt="${escapeAttr(product.name)}" />` : "<span>Sem foto</span>"}
+        ${productImages(product)[0] ? `<img src="${escapeAttr(productImages(product)[0])}" alt="${escapeAttr(product.name)}" />` : "<span>Sem foto</span>"}
       </div>
       <div class="admin-product-info">
         <div>
@@ -210,6 +213,7 @@ function renderAdminProducts() {
         <div class="chip-row">
           <span>${product.active ? "No site" : "Oculta"}</span>
           <span>${product.inStock ? "Disponível" : "Indisponível"}</span>
+          <span>${productImages(product).length} ${productImages(product).length === 1 ? "foto" : "fotos"}</span>
           ${product.featured ? "<span>Destaque</span>" : ""}
         </div>
       </div>
@@ -241,10 +245,12 @@ function editProduct(productId) {
   fields.productActive.checked = Boolean(product.active);
   fields.productInStock.checked = Boolean(product.inStock);
   fields.productFeatured.checked = Boolean(product.featured);
+  fields.productReplaceImages.checked = false;
+  fields.replaceImagesToggle.hidden = false;
   fields.productImage.value = "";
   fields.productFormTitle.textContent = "Editar peça";
   fields.productMessage.textContent = "";
-  setImagePreview(product.image);
+  setImagePreview(productImages(product));
   document.querySelector("#productsTab").scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
@@ -267,37 +273,49 @@ function resetProductForm() {
   fields.productActive.checked = true;
   fields.productInStock.checked = true;
   fields.productFeatured.checked = false;
+  fields.productReplaceImages.checked = false;
+  fields.replaceImagesToggle.hidden = true;
   fields.productFormTitle.textContent = "Nova peça";
   fields.productMessage.textContent = "";
   setImagePreview("");
 }
 
 function previewSelectedImage() {
-  const file = fields.productImage.files[0];
+  const files = [...fields.productImage.files];
 
-  if (!file) {
+  if (!files.length) {
     setImagePreview("");
     return;
   }
 
-  const reader = new FileReader();
-  reader.addEventListener("load", () => setImagePreview(reader.result));
-  reader.readAsDataURL(file);
+  Promise.all(
+    files.map(
+      (file) =>
+        new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.addEventListener("load", () => resolve(reader.result));
+          reader.readAsDataURL(file);
+        })
+    )
+  ).then((sources) => setImagePreview(sources));
 }
 
 function setImagePreview(source) {
   fields.imagePreview.innerHTML = "";
   fields.imagePreview.style.backgroundImage = "";
+  const sources = Array.isArray(source) ? source.filter(Boolean) : [source].filter(Boolean);
 
-  if (!source) {
+  if (!sources.length) {
     fields.imagePreview.textContent = "Sem foto";
     return;
   }
 
-  const image = document.createElement("img");
-  image.src = source;
-  image.alt = "Prévia da foto";
-  fields.imagePreview.append(image);
+  sources.forEach((item, index) => {
+    const image = document.createElement("img");
+    image.src = item;
+    image.alt = `Prévia da foto ${index + 1}`;
+    fields.imagePreview.append(image);
+  });
 }
 
 function fillSettingsForm(settings) {
@@ -321,6 +339,11 @@ function selectTab(tabName) {
 
 function applySessionState(session) {
   passwordWarning.hidden = !session.defaultPassword;
+}
+
+function productImages(product = {}) {
+  const images = Array.isArray(product.images) ? product.images : [];
+  return [...new Set([...images, product.image].filter(Boolean))];
 }
 
 async function copyProductLink(productId, button) {

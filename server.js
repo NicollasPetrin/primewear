@@ -36,7 +36,7 @@ const authCookie = "catalog_admin";
 const defaultSettings = {
   storeName: "Primewear Imports",
   tagline: "Moda importada com curadoria, elegancia e pronta entrega.",
-  whatsapp: "5511999999999",
+  whatsapp: "5511989925108",
   instagram: "",
   address: "",
   notice: "Estilo global para o seu guarda-roupa",
@@ -160,7 +160,12 @@ function sortProducts(products) {
   });
 }
 
-function normalizeProduct(input, existing = {}, file) {
+function productImages(product = {}) {
+  const images = Array.isArray(product.images) ? product.images : [];
+  return [...new Set([...images, product.image].filter(Boolean))];
+}
+
+function normalizeProduct(input, existing = {}, files = []) {
   const name = cleanText(input.name ?? existing.name, 90);
 
   if (!name) {
@@ -170,8 +175,12 @@ function normalizeProduct(input, existing = {}, file) {
   }
 
   const category = cleanText(input.category ?? existing.category, 50) || "Geral";
-  const previousImage = existing.image || "";
-  const image = file ? `/uploads/${file.filename}` : cleanText(input.image ?? previousImage, 180);
+  const uploadedImages = files.map((file) => `/uploads/${file.filename}`);
+  const replaceImages = parseBoolean(input.replaceImages, false);
+  const existingImages = replaceImages ? [] : productImages(existing);
+  const images = [...new Set([...existingImages, ...uploadedImages])].slice(0, 12);
+  const fallbackImage = cleanText(input.image ?? existing.image, 180);
+  const image = images[0] || fallbackImage;
 
   return {
     id: existing.id || crypto.randomUUID(),
@@ -182,6 +191,7 @@ function normalizeProduct(input, existing = {}, file) {
     colors: parseList(input.colors ?? existing.colors),
     description: cleanText(input.description ?? existing.description, 500),
     image,
+    images: image ? [...new Set([image, ...images])] : [],
     featured: parseBoolean(input.featured, existing.featured || false),
     inStock: parseBoolean(input.inStock, existing.inStock ?? true),
     active: parseBoolean(input.active, existing.active ?? true),
@@ -372,17 +382,19 @@ app.put("/api/admin/settings", requireAdmin, async (request, response, next) => 
 app.post(
   "/api/admin/products",
   requireAdmin,
-  upload.single("image"),
+  upload.array("images", 12),
   async (request, response, next) => {
     try {
       const products = await readJson(productsFile, []);
-      const product = normalizeProduct(request.body, {}, request.file);
+      const product = normalizeProduct(request.body, {}, request.files || []);
       products.push(product);
       await writeJson(productsFile, products);
       response.status(201).json(product);
     } catch (error) {
-      if (request.file) {
-        await removeUploadedImage(`/uploads/${request.file.filename}`);
+      if (request.files?.length) {
+        await Promise.all(
+          request.files.map((file) => removeUploadedImage(`/uploads/${file.filename}`))
+        );
       }
 
       next(error);
@@ -393,7 +405,7 @@ app.post(
 app.put(
   "/api/admin/products/:id",
   requireAdmin,
-  upload.single("image"),
+  upload.array("images", 12),
   async (request, response, next) => {
     try {
       const products = await readJson(productsFile, []);
@@ -405,18 +417,25 @@ app.put(
       }
 
       const previous = products[index];
-      const product = normalizeProduct(request.body, previous, request.file);
+      const product = normalizeProduct(request.body, previous, request.files || []);
       products[index] = product;
       await writeJson(productsFile, products);
 
-      if (request.file && previous.image !== product.image) {
-        await removeUploadedImage(previous.image);
+      if (parseBoolean(request.body.replaceImages, false)) {
+        const currentImages = new Set(productImages(product));
+        await Promise.all(
+          productImages(previous)
+            .filter((image) => !currentImages.has(image))
+            .map((image) => removeUploadedImage(image))
+        );
       }
 
       response.json(product);
     } catch (error) {
-      if (request.file) {
-        await removeUploadedImage(`/uploads/${request.file.filename}`);
+      if (request.files?.length) {
+        await Promise.all(
+          request.files.map((file) => removeUploadedImage(`/uploads/${file.filename}`))
+        );
       }
 
       next(error);
@@ -438,7 +457,7 @@ app.delete("/api/admin/products/:id", requireAdmin, async (request, response, ne
       productsFile,
       products.filter((item) => item.id !== request.params.id)
     );
-    await removeUploadedImage(product.image);
+    await Promise.all(productImages(product).map((image) => removeUploadedImage(image)));
     response.json({ ok: true });
   } catch (error) {
     next(error);
