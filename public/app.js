@@ -22,6 +22,8 @@ const state = {
   }
 };
 
+const defaultClothingCategories = ["Camisetas", "Jaquetas / Moletons", "Shorts", "Calças"];
+
 const elements = {
   grid: document.querySelector("#productGrid"),
   empty: document.querySelector("#emptyState"),
@@ -472,8 +474,11 @@ function buildFilters(products) {
 
 function renderNavMenus(products) {
   const clothingCategories = sortedByPreference(
-    unique(products.filter((product) => productGroup(product) === "clothing").map((product) => product.category)),
-    ["shorts", "calças", "blusas", "camisetas", "conjuntos"]
+    uniqueNormalized([
+      ...defaultClothingCategories,
+      ...products.filter((product) => productGroup(product) === "clothing").map((product) => product.category)
+    ]),
+    ["camisetas", "jaquetas / moletons", "shorts", "calças", "blusas", "conjuntos"]
   );
   const sneakerBrands = unique(products.filter((product) => productGroup(product) === "sneakers").map((product) => product.brand));
   const accessoryCategories = sortedByPreference(
@@ -643,6 +648,25 @@ function fillSelect(select, values, label) {
 
 function unique(values) {
   return [...new Set(values.filter(Boolean))].sort((a, b) => a.localeCompare(b, "pt-BR"));
+}
+
+function uniqueNormalized(values) {
+  const seen = new Set();
+
+  return values.filter((value) => {
+    if (!value) {
+      return false;
+    }
+
+    const key = normalizeForFilter(value);
+
+    if (seen.has(key)) {
+      return false;
+    }
+
+    seen.add(key);
+    return true;
+  });
 }
 
 function catalogSizes(products) {
