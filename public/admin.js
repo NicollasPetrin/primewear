@@ -423,15 +423,19 @@ function renderImagePreview() {
     const card = document.createElement("div");
     card.className = "image-preview-card";
 
+    const frame = document.createElement("div");
+    frame.className = "image-preview-frame";
+    card.append(frame);
+
     const image = document.createElement("img");
     image.src = item.source;
     image.alt = `Prévia da foto ${visualIndex + 1}`;
-    card.append(image);
+    frame.append(image);
 
     const badge = document.createElement("span");
     badge.className = "image-preview-badge";
     badge.textContent = item.label;
-    card.append(badge);
+    frame.append(badge);
 
     const orderControls = document.createElement("div");
     orderControls.className = "image-order-controls";
@@ -461,7 +465,10 @@ function renderImagePreview() {
     previousButton.dataset.direction = "prev";
     nextButton.dataset.direction = "next";
     orderControls.append(previousButton, nextButton);
-    card.append(orderControls);
+    frame.append(orderControls);
+
+    const meta = document.createElement("div");
+    meta.className = "image-preview-meta";
 
     const colorInput = document.createElement("input");
     colorInput.className = "image-color-input";
@@ -477,7 +484,15 @@ function renderImagePreview() {
       colorInput.dataset.selectedImageColor = String(item.index);
     }
 
-    card.append(colorInput);
+    const colorField = document.createElement("label");
+    colorField.className = "image-color-field";
+    const colorLabel = document.createElement("span");
+    colorLabel.textContent = "Cor";
+    colorField.append(colorLabel, colorInput);
+    meta.append(colorField);
+
+    const actionRow = document.createElement("div");
+    actionRow.className = "image-preview-actions";
 
     if (item.editable) {
       const editButton = document.createElement("button");
@@ -491,7 +506,7 @@ function renderImagePreview() {
         editButton.dataset.editSelectedImage = String(item.index);
       }
 
-      card.append(editButton);
+      actionRow.append(editButton);
     }
 
     if (item.removable) {
@@ -500,9 +515,14 @@ function renderImagePreview() {
       removeButton.type = "button";
       removeButton.dataset.removeSelectedImage = String(item.index);
       removeButton.textContent = "Remover";
-      card.append(removeButton);
+      actionRow.append(removeButton);
     }
 
+    if (actionRow.childElementCount) {
+      meta.append(actionRow);
+    }
+
+    card.append(meta);
     fields.imagePreview.append(card);
   });
 }

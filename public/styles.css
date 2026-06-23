@@ -1618,7 +1618,7 @@ textarea:focus {
   aspect-ratio: auto;
 }
 
-.image-preview-grid img {
+.image-preview-grid > img {
   width: 100%;
   height: auto;
   aspect-ratio: 1;
@@ -1630,13 +1630,26 @@ textarea:focus {
   position: relative;
   min-width: 0;
   overflow: hidden;
-  border-radius: 6px;
+  display: grid;
+  align-self: start;
+  border: 1px solid rgba(222, 212, 193, 0.95);
+  border-radius: 8px;
+  background: #fffdf8;
+  box-shadow: 0 10px 22px rgba(7, 21, 37, 0.08);
+}
+
+.image-preview-frame {
+  position: relative;
+  aspect-ratio: 1;
+  overflow: hidden;
   background: linear-gradient(135deg, #eff2f5, #f4ead5 55%, #dfe8ef);
 }
 
-.image-preview-card img {
+.image-preview-frame img {
+  display: block;
   width: 100%;
   height: 100%;
+  object-fit: cover;
 }
 
 .image-preview-badge {
@@ -1691,44 +1704,57 @@ textarea:focus {
 }
 
 .image-color-input {
-  position: absolute;
-  right: 6px;
-  bottom: 42px;
-  left: 6px;
-  width: calc(100% - 12px);
-  min-height: 32px;
-  border: 1px solid rgba(255, 255, 255, 0.72);
+  width: 100%;
+  min-width: 0;
+  min-height: 34px;
+  padding: 0 9px;
+  border: 1px solid var(--line);
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.94);
+  background: white;
   color: var(--ink);
   font-size: 12px;
   font-weight: 800;
-  box-shadow: 0 8px 18px rgba(7, 21, 37, 0.16);
 }
 
-.image-edit-button {
-  position: absolute;
-  right: 6px;
-  bottom: 6px;
-  min-height: 30px;
-  padding: 0 10px;
-  border-color: rgba(255, 255, 255, 0.7);
-  background: rgba(255, 255, 255, 0.92);
+.image-preview-meta {
+  display: grid;
+  gap: 8px;
+  padding: 8px;
+  background: rgba(255, 253, 248, 0.96);
+}
+
+.image-color-field {
+  display: grid;
+  gap: 4px;
+}
+
+.image-color-field span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.image-preview-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.image-edit-button,
+.image-remove-button {
+  position: static;
+  flex: 1 1 70px;
+  min-height: 32px;
+  padding: 0 8px;
   font-size: 12px;
-  box-shadow: 0 8px 18px rgba(7, 21, 37, 0.16);
+  box-shadow: none;
 }
 
 .image-remove-button {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  min-height: 26px;
-  padding: 0 8px;
   border-color: rgba(255, 211, 216, 0.92);
-  background: rgba(255, 245, 246, 0.94);
+  background: #fff5f6;
   color: var(--danger);
-  font-size: 11px;
-  box-shadow: 0 8px 18px rgba(7, 21, 37, 0.16);
 }
 
 .image-editor-dialog {
