@@ -262,7 +262,7 @@ function productMetaDescription(product) {
     product.colors?.length ? `Cores: ${product.colors.join(", ")}` : ""
   ].filter(Boolean);
 
-  return cleanText(product.description || parts.join(" | "), 220);
+  return cleanText([parts.join(" | "), product.description].filter(Boolean).join(" - "), 220);
 }
 
 function renderMetaPage(html, meta) {
