@@ -22,7 +22,14 @@ const state = {
   }
 };
 
-const defaultClothingCategories = ["Camisetas", "Jaquetas / Moletons", "Shorts", "Calças"];
+const defaultClothingCategories = ["Camisetas", "Jaquetas / Moletons", "Shorts", "Calças", "Blusas", "Conjuntos"];
+const defaultSneakerCategories = ["Tênis", "Sneakers"];
+const defaultAccessoryCategories = ["Relógios", "Óculos de sol", "Pulseiras", "Colares", "Bolsas", "Bonés", "Cintos", "Brincos", "Anéis"];
+const defaultCatalogCategories = [
+  ...defaultClothingCategories,
+  ...defaultSneakerCategories,
+  ...defaultAccessoryCategories
+];
 
 const elements = {
   grid: document.querySelector("#productGrid"),
@@ -464,7 +471,7 @@ function updateNavState() {
 }
 
 function buildFilters(products) {
-  fillSelect(elements.category, unique(products.map((product) => product.category)), "Todas");
+  fillSelect(elements.category, catalogCategories(products), "Todas");
   fillSelect(elements.brand, unique(products.map((product) => product.brand)), "Todas");
   fillSelect(elements.size, catalogSizes(products), "Todos");
   fillSelect(elements.color, unique(products.flatMap((product) => product.colors || [])), "Todas");
@@ -478,12 +485,15 @@ function renderNavMenus(products) {
       ...defaultClothingCategories,
       ...products.filter((product) => productGroup(product) === "clothing").map((product) => product.category)
     ]),
-    ["camisetas", "jaquetas / moletons", "shorts", "calças", "blusas", "conjuntos"]
+    defaultClothingCategories
   );
   const sneakerBrands = unique(products.filter((product) => productGroup(product) === "sneakers").map((product) => product.brand));
   const accessoryCategories = sortedByPreference(
-    unique(products.filter((product) => productGroup(product) === "accessories").map((product) => product.category)),
-    ["relógios", "óculos de sol", "pulseiras", "colares"]
+    uniqueNormalized([
+      ...defaultAccessoryCategories,
+      ...products.filter((product) => productGroup(product) === "accessories").map((product) => product.category)
+    ]),
+    defaultAccessoryCategories
   );
   const brands = unique(products.map((product) => product.brand));
 
@@ -669,6 +679,13 @@ function uniqueNormalized(values) {
   });
 }
 
+function catalogCategories(products) {
+  return sortedByPreference(
+    uniqueNormalized([...defaultCatalogCategories, ...products.map((product) => product.category)]),
+    defaultCatalogCategories
+  );
+}
+
 function catalogSizes(products) {
   const defaultSizes = ["PP", "P", "M", "G", "GG", "XG", "XGG", "34", "35", "36", "37", "38", "39", "40", "41", "42", "43", "44"];
   return sortSizes(unique([...defaultSizes, ...products.flatMap((product) => product.sizes || [])]));
@@ -808,7 +825,7 @@ function filteredProducts() {
         (!group || productGroup(product) === group) &&
         (!gender || productAudiences(product).includes(gender)) &&
         (!delivery || productDeliveryType(product) === delivery) &&
-        (!category || product.category === category) &&
+        (!category || normalizeForFilter(product.category) === normalizeForFilter(category)) &&
         (!brand || product.brand === brand) &&
         (!size || (product.sizes || []).includes(size)) &&
         (!color || (product.colors || []).includes(color))
