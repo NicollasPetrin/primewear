@@ -1630,6 +1630,17 @@ textarea:focus {
   cursor: pointer;
 }
 
+.image-edit-published-button {
+  justify-content: center;
+  width: 100%;
+  border-style: dashed;
+  background: #fffdf8;
+}
+
+.toggle.is-locked {
+  opacity: 0.7;
+}
+
 .image-preview {
   width: 100%;
   aspect-ratio: 4 / 3;

@@ -309,7 +309,7 @@ function normalizeProduct(input, existing = {}, files = []) {
   const imageOrder = parseJsonList(input.imageOrder);
   const existingImages = replaceImages ? [] : orderImages(productImages(existing), imageOrder);
   const images = [...new Set([...existingImages, ...uploadedImages])].slice(0, 12);
-  const fallbackImage = cleanText(input.image ?? existing.image, 180);
+  const fallbackImage = replaceImages ? cleanText(input.image, 180) : cleanText(input.image ?? existing.image, 180);
   const image = images[0] || fallbackImage;
   const finalImages = image ? [...new Set([image, ...images])] : [];
   const submittedImageColors = parseJsonList(input.imageColors);

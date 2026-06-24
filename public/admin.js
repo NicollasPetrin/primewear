@@ -37,6 +37,7 @@ const fields = {
   productColors: document.querySelector("#productColors"),
   productDescription: document.querySelector("#productDescription"),
   productImage: document.querySelector("#productImage"),
+  productEnableImageEdit: document.querySelector("#productEnableImageEdit"),
   productReplaceImages: document.querySelector("#productReplaceImages"),
   replaceImagesToggle: document.querySelector("#replaceImagesToggle"),
   productActive: document.querySelector("#productActive"),
@@ -90,6 +91,7 @@ function bindEvents() {
   document.querySelector("#resetProductButton").addEventListener("click", resetProductForm);
   fields.adminSearch.addEventListener("input", renderAdminProducts);
   fields.productImage.addEventListener("change", previewSelectedImage);
+  fields.productEnableImageEdit.addEventListener("click", handleEnablePublishedImageEditing);
   fields.productReplaceImages.addEventListener("change", renderImagePreview);
   fields.imagePreview.addEventListener("click", handleImagePreviewClick);
   fields.imagePreview.addEventListener("input", handleImageColorInput);
@@ -415,12 +417,13 @@ function renderImagePreview() {
       canMovePrev: index > 0,
       canMoveNext: index < state.selectedImages.length - 1,
       editable: true,
-      removable: !item.fromExisting
+      removable: true
     }))
   ];
 
   if (!cards.length) {
     fields.imagePreview.textContent = "Sem foto";
+    syncPublishedImagesEditControl();
     return;
   }
 
@@ -530,10 +533,37 @@ function renderImagePreview() {
     card.append(meta);
     fields.imagePreview.append(card);
   });
+  syncPublishedImagesEditControl();
 }
 
 function renderSelectedImagePreview() {
   renderImagePreview();
+}
+
+function syncPublishedImagesEditControl() {
+  const editingPublished = state.selectedImages.some((item) => item.fromExisting);
+  const canEditPublished =
+    state.existingImages.length > 0 &&
+    !fields.productReplaceImages.checked &&
+    !editingPublished;
+
+  fields.productEnableImageEdit.hidden = !canEditPublished;
+  fields.productReplaceImages.disabled = editingPublished;
+  fields.replaceImagesToggle.classList.toggle("is-locked", editingPublished);
+}
+
+async function handleEnablePublishedImageEditing() {
+  if (!state.existingImages.length) {
+    return;
+  }
+
+  try {
+    fields.productMessage.textContent = "Preparando fotos publicadas...";
+    await prepareExistingImagesForEditing();
+    fields.productMessage.textContent = "Fotos publicadas liberadas para editar. Salve a peça para publicar as mudanças.";
+  } catch (error) {
+    fields.productMessage.textContent = error.message;
+  }
 }
 
 function handleImageColorInput(event) {
