@@ -223,6 +223,23 @@ function normalizeDeliveryType(value) {
   return value === "preorder" ? "preorder" : "immediate";
 }
 
+function normalizeAudience(value) {
+  const normalized = cleanText(value, 40)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+
+  if (["feminine", "feminino", "feminina", "female", "mulher"].includes(normalized)) {
+    return "feminine";
+  }
+
+  if (["masculine", "masculino", "masculina", "male", "homem"].includes(normalized)) {
+    return "masculine";
+  }
+
+  return "unisex";
+}
+
 function deliveryLabel(value) {
   return normalizeDeliveryType(value) === "preorder" ? "Sob encomenda" : "Envio imediato";
 }
@@ -285,6 +302,7 @@ function normalizeProduct(input, existing = {}, files = []) {
 
   const category = cleanText(input.category ?? existing.category, 50) || "Geral";
   const brand = cleanText(input.brand ?? existing.brand, 50);
+  const audience = normalizeAudience(input.audience ?? existing.audience);
   const deliveryType = normalizeDeliveryType(input.deliveryType ?? existing.deliveryType);
   const uploadedImages = files.map((file) => `/uploads/${file.filename}`);
   const replaceImages = parseBoolean(input.replaceImages, false);
@@ -313,6 +331,7 @@ function normalizeProduct(input, existing = {}, files = []) {
     price: parsePrice(input.price, existing.price || 0),
     category,
     brand,
+    audience,
     deliveryType,
     sizes: parseList(input.sizes ?? existing.sizes),
     colors,

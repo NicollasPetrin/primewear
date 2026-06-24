@@ -922,18 +922,18 @@ function productGroup(product = {}) {
 }
 
 function productAudiences(product = {}) {
-  const explicit = normalizeForFilter(product.audience);
+  const explicit = productAudience(product);
   const text = normalizeForFilter([product.category, product.name, product.description].join(" "));
   const feminineTerms = ["feminino", "feminina", "mulher", "mulheres", "female", "ladies"];
   const masculineTerms = ["masculino", "masculina", "homem", "homens", "male", "men"];
   const hasFeminine =
-    ["feminine", "feminino", "feminina"].includes(explicit) ||
+    explicit === "feminine" ||
     feminineTerms.some((term) => text.includes(normalizeForFilter(term)));
   const hasMasculine =
-    ["masculine", "masculino", "masculina"].includes(explicit) ||
+    explicit === "masculine" ||
     masculineTerms.some((term) => text.includes(normalizeForFilter(term)));
 
-  if (explicit === "unissex" || explicit === "unisex") {
+  if (explicit === "unisex") {
     return ["feminine", "masculine"];
   }
 
@@ -941,7 +941,32 @@ function productAudiences(product = {}) {
     return [hasFeminine ? "feminine" : "", hasMasculine ? "masculine" : ""].filter(Boolean);
   }
 
-  return ["feminine", "masculine"];
+  return [];
+}
+
+function productAudience(product = {}) {
+  const value = normalizeForFilter(product.audience);
+
+  if (!value) {
+    return "";
+  }
+
+  if (["feminine", "feminino", "feminina", "female", "mulher"].includes(value)) {
+    return "feminine";
+  }
+
+  if (["masculine", "masculino", "masculina", "male", "homem"].includes(value)) {
+    return "masculine";
+  }
+
+  return "unisex";
+}
+
+function audienceLabel(value) {
+  if (value === "feminine") return "Feminino";
+  if (value === "masculine") return "Masculino";
+  if (value === "unisex") return "Unissex";
+  return "";
 }
 
 function productDeliveryType(product = {}) {
@@ -986,6 +1011,7 @@ function filteredProducts() {
         product.name,
         product.category,
         product.brand,
+        productAudience(product) ? audienceLabel(productAudience(product)) : "",
         product.description,
         deliveryLabel(productDeliveryType(product)),
         ...(product.sizes || []),
@@ -1036,7 +1062,7 @@ function createProductCard(product) {
       <p class="product-price">${money.format(product.price || 0)}</p>
       ${renderColorOptions(product, selectedColor)}
       ${renderSizeOptions(product, selectedSize)}
-      <div class="chip-row">${renderChips([deliveryLabel(productDeliveryType(product)), product.category, ...(product.colors || [])])}</div>
+      <div class="chip-row">${renderChips([productAudience(product) ? audienceLabel(productAudience(product)) : "", deliveryLabel(productDeliveryType(product)), product.category, ...(product.colors || [])])}</div>
       <div class="product-actions">
         <button class="button button-primary" type="button" data-add-cart="${escapeAttr(product.id)}">${escapeHtml(productCartButtonLabel(product, selectedSize, selectedColor))}</button>
         <a class="button button-quiet" href="${escapeAttr(productLink(product, selectedColor, selectedSize))}">Detalhes</a>

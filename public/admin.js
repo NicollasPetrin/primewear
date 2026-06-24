@@ -31,6 +31,7 @@ const fields = {
   productPrice: document.querySelector("#productPrice"),
   productCategory: document.querySelector("#productCategory"),
   productBrand: document.querySelector("#productBrand"),
+  productAudience: document.querySelector("#productAudience"),
   productDeliveryType: document.querySelector("#productDeliveryType"),
   productSizes: document.querySelector("#productSizes"),
   productColors: document.querySelector("#productColors"),
@@ -178,6 +179,7 @@ async function handleProductSubmit(event) {
   formData.set("active", String(fields.productActive.checked));
   formData.set("inStock", String(fields.productInStock.checked));
   formData.set("featured", String(fields.productFeatured.checked));
+  formData.set("audience", fields.productAudience.value);
   formData.set("deliveryType", fields.productDeliveryType.value);
   formData.set("replaceImages", String(shouldReplaceImages));
   formData.set("imageColors", JSON.stringify(imageColorsForSubmit(shouldReplaceImages)));
@@ -236,7 +238,7 @@ async function handleSettingsSubmit(event) {
 function renderAdminProducts() {
   const query = fields.adminSearch.value.trim().toLowerCase();
   const products = state.products.filter((product) => {
-    return [product.name, product.category, product.brand, deliveryLabel(product.deliveryType), product.description]
+    return [product.name, product.category, product.brand, audienceLabel(product.audience), deliveryLabel(product.deliveryType), product.description]
       .join(" ")
       .toLowerCase()
       .includes(query);
@@ -261,6 +263,7 @@ function renderAdminProducts() {
         <div class="chip-row">
           <span>${escapeHtml(product.category || "Geral")}</span>
           ${product.brand ? `<span>${escapeHtml(product.brand)}</span>` : ""}
+          <span>${escapeHtml(audienceLabel(product.audience))}</span>
           <span>${escapeHtml(deliveryLabel(product.deliveryType))}</span>
           <span>${product.active ? "No site" : "Oculta"}</span>
           <span>${product.inStock ? "Disponível" : "Indisponível"}</span>
@@ -291,6 +294,7 @@ function editProduct(productId) {
   fields.productPrice.value = String(product.price || "").replace(".", ",");
   fields.productCategory.value = product.category || "";
   fields.productBrand.value = product.brand || "";
+  fields.productAudience.value = product.audience || "unisex";
   fields.productDeliveryType.value = product.deliveryType || "immediate";
   fields.productSizes.value = (product.sizes || []).join(", ");
   fields.productColors.value = (product.colors || []).join(", ");
@@ -333,6 +337,7 @@ function resetProductForm() {
   fields.productInStock.checked = true;
   fields.productFeatured.checked = false;
   fields.productBrand.value = "";
+  fields.productAudience.value = "unisex";
   fields.productDeliveryType.value = "immediate";
   fields.productReplaceImages.checked = false;
   fields.replaceImagesToggle.hidden = true;
@@ -1073,6 +1078,13 @@ function productImages(product = {}) {
 
 function deliveryLabel(value) {
   return value === "preorder" ? "Sob encomenda" : "Envio imediato";
+}
+
+function audienceLabel(value) {
+  if (value === "feminine") return "Feminino";
+  if (value === "masculine") return "Masculino";
+  if (!value) return "Sem público";
+  return "Unissex";
 }
 
 async function copyProductLink(productId, button) {
