@@ -244,6 +244,10 @@ function deliveryLabel(value) {
   return normalizeDeliveryType(value) === "preorder" ? "Sob encomenda" : "Envio imediato";
 }
 
+function productPriceLabel(product = {}) {
+  return Number(product.price || 0) <= 0 ? "Sob consulta" : money.format(product.price || 0);
+}
+
 function sortProducts(products) {
   return [...products].sort((a, b) => {
     if (a.featured !== b.featured) {
@@ -364,7 +368,7 @@ function productMetaDescription(product) {
     product.brand,
     product.category,
     deliveryLabel(product.deliveryType),
-    money.format(product.price || 0),
+    productPriceLabel(product),
     product.sizes?.length ? `Tamanhos: ${product.sizes.join(", ")}` : "",
     product.colors?.length ? `Cores: ${product.colors.join(", ")}` : ""
   ].filter(Boolean);

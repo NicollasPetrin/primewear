@@ -261,7 +261,7 @@ function renderAdminProducts() {
           <p class="product-category">${escapeHtml(product.brand || product.category || "Geral")}</p>
           <h3>${escapeHtml(product.name)}</h3>
         </div>
-        <p>${money.format(product.price || 0)}</p>
+        <p>${escapeHtml(productPriceLabel(product))}</p>
         <div class="chip-row">
           <span>${escapeHtml(product.category || "Geral")}</span>
           ${product.brand ? `<span>${escapeHtml(product.brand)}</span>` : ""}
@@ -293,7 +293,7 @@ function editProduct(productId) {
   state.editingId = product.id;
   fields.productId.value = product.id;
   fields.productName.value = product.name;
-  fields.productPrice.value = String(product.price || "").replace(".", ",");
+  fields.productPrice.value = product.price === 0 ? "0" : String(product.price || "").replace(".", ",");
   fields.productCategory.value = product.category || "";
   fields.productBrand.value = product.brand || "";
   fields.productAudience.value = product.audience || "unisex";
@@ -1108,6 +1108,10 @@ function productImages(product = {}) {
 
 function deliveryLabel(value) {
   return value === "preorder" ? "Sob encomenda" : "Envio imediato";
+}
+
+function productPriceLabel(product = {}) {
+  return Number(product.price || 0) <= 0 ? "Sob consulta" : money.format(product.price || 0);
 }
 
 function audienceLabel(value) {

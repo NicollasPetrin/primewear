@@ -985,6 +985,41 @@ function normalizeForFilter(value) {
     .trim();
 }
 
+function productHasConsultPrice(product = {}) {
+  return Number(product.price || 0) <= 0;
+}
+
+function productPriceLabel(product = {}) {
+  return productHasConsultPrice(product) ? "Sob consulta" : money.format(product.price || 0);
+}
+
+function productUnitPriceLabel(product = {}) {
+  return productHasConsultPrice(product) ? "Sob consulta" : `${productPriceLabel(product)} cada`;
+}
+
+function cartHasConsultPrice(items = activeCartItems()) {
+  return items.some((item) => productHasConsultPrice(item.product));
+}
+
+function cartTotalLabel(items = activeCartItems(), total = cartTotal(items)) {
+  return cartHasConsultPrice(items) ? "Sob consulta" : money.format(total);
+}
+
+function priceSortValue(product = {}) {
+  return Number(product.price || 0);
+}
+
+function compareProductPrices(a, b, direction = "asc") {
+  const aConsult = productHasConsultPrice(a);
+  const bConsult = productHasConsultPrice(b);
+
+  if (aConsult && bConsult) return 0;
+  if (aConsult) return 1;
+  if (bConsult) return -1;
+
+  return direction === "desc" ? priceSortValue(b) - priceSortValue(a) : priceSortValue(a) - priceSortValue(b);
+}
+
 function renderProducts() {
   const products = filteredProducts();
   elements.grid.innerHTML = "";
@@ -1030,8 +1065,8 @@ function filteredProducts() {
       );
     })
     .sort((a, b) => {
-      if (sort === "price-asc") return a.price - b.price;
-      if (sort === "price-desc") return b.price - a.price;
+      if (sort === "price-asc") return compareProductPrices(a, b, "asc");
+      if (sort === "price-desc") return compareProductPrices(a, b, "desc");
       if (sort === "newest") return new Date(b.updatedAt) - new Date(a.updatedAt);
       if (a.featured !== b.featured) return a.featured ? -1 : 1;
       return new Date(b.updatedAt) - new Date(a.updatedAt);
@@ -1059,7 +1094,7 @@ function createProductCard(product) {
     <div class="product-content">
       <p class="product-category">${escapeHtml(productSubtitle(product))}</p>
       <h3>${escapeHtml(product.name)}</h3>
-      <p class="product-price">${money.format(product.price || 0)}</p>
+      <p class="product-price">${escapeHtml(productPriceLabel(product))}</p>
       ${renderColorOptions(product, selectedColor)}
       ${renderSizeOptions(product, selectedSize)}
       <div class="chip-row">${renderChips([productAudience(product) ? audienceLabel(productAudience(product)) : "", deliveryLabel(productDeliveryType(product)), product.category, ...(product.colors || [])])}</div>
@@ -1431,7 +1466,7 @@ function renderCart() {
   elements.cartEmpty.hidden = items.length > 0;
   elements.clearCart.hidden = items.length === 0;
   elements.cartItems.innerHTML = items.map(renderCartItem).join("");
-  elements.cartTotal.textContent = `Total estimado: ${money.format(total)}`;
+  elements.cartTotal.textContent = `Total estimado: ${cartTotalLabel(items, total)}`;
 
   const whatsappUrl = items.length ? buildWhatsappUrl(cartMessage(items, total)) : "";
   elements.cartWhatsappLink.href = whatsappUrl || "#";
@@ -1454,7 +1489,7 @@ function renderCartItem({ product, quantity, size, color, key }) {
       <div class="cart-item-info">
         <p class="product-category">${escapeHtml(productSubtitle(product))}</p>
         <h3>${escapeHtml(product.name)}</h3>
-        <p>${money.format(product.price || 0)} cada</p>
+        <p>${escapeHtml(productUnitPriceLabel(product))}</p>
         <small>${escapeHtml(deliveryLabel(productDeliveryType(product)))}</small>
         ${details.length ? `<div class="cart-item-options">${details.map((item) => `<span>${escapeHtml(item)}</span>`).join("")}</div>` : ""}
       </div>
@@ -1504,7 +1539,7 @@ function cartMessage(items = activeCartItems(), total = cartTotal(items)) {
   items.forEach(({ product, quantity, size, color }, index) => {
     lines.push(
       `${index + 1}. ${quantity}x ${product.name}`,
-      `Valor: ${money.format(product.price || 0)} cada`,
+      `Valor: ${productUnitPriceLabel(product)}`,
       `Categoria: ${productSubtitle(product) || "Geral"}`,
       ...(size ? [`Tamanho: ${size}`] : productNeedsSize(product) ? ["Tamanho: consultar"] : []),
       ...(color ? [`Cor: ${color}`] : []),
@@ -1514,7 +1549,7 @@ function cartMessage(items = activeCartItems(), total = cartTotal(items)) {
     );
   });
 
-  lines.push(`Total estimado: ${money.format(total)}`, "Pode confirmar disponibilidade e entrega?");
+  lines.push(`Total estimado: ${cartTotalLabel(items, total)}`, "Pode confirmar disponibilidade e entrega?");
   return lines.join("\n");
 }
 
@@ -1596,7 +1631,7 @@ function renderProductPage(product) {
       <div class="product-page-info">
         <p class="product-category">${escapeHtml(productSubtitle(product))}</p>
         <h1>${escapeHtml(product.name)}</h1>
-        <p class="product-price">${money.format(product.price || 0)}</p>
+        <p class="product-price">${escapeHtml(productPriceLabel(product))}</p>
         ${product.description ? `<p class="product-description">${escapeHtml(product.description)}</p>` : ""}
         <div class="info-group">
           <strong>Envio</strong>
@@ -1665,7 +1700,7 @@ function renderProductDialog(product) {
     <div class="dialog-info">
       <p class="product-category">${escapeHtml(productSubtitle(product))}</p>
       <h2>${escapeHtml(product.name)}</h2>
-      <p class="product-price">${money.format(product.price || 0)}</p>
+      <p class="product-price">${escapeHtml(productPriceLabel(product))}</p>
       ${product.description ? `<p>${escapeHtml(product.description)}</p>` : ""}
       ${
         product.brand
@@ -1743,7 +1778,7 @@ function closeProductDialog() {
 
 function productMessage(product, selection = productSelection(product)) {
   const lines = [
-    `Olá! Tenho interesse na peça ${product.name} (${money.format(product.price || 0)}).`
+    `Olá! Tenho interesse na peça ${product.name} (${productPriceLabel(product)}).`
   ];
 
   if (selection.size) {
